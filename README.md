@@ -1,0 +1,2 @@
+# organizer
+aws account configuration
