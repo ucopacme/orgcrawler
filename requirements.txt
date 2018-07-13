@@ -1,0 +1,6 @@
+botocore 
+boto3
+PyYAML
+pytest
+moto
+

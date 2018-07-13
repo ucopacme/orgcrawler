@@ -1,0 +1,9 @@
+*.swp
+*.swo
+*.vpc
+*.pyc
+__pycache__
+*.egg-info
+.cache/
+.pytest_cache
+.~c9*
