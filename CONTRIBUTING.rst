@@ -3,7 +3,6 @@ Contributing to Organizer
 =========================
 
 
-- `Code of Conduct`_
 - `How to Contribute`_
 
   - `Report Bugs`_
@@ -13,11 +12,6 @@ Contributing to Organizer
 - `Get Started`_
 - `Credits`_
 
-
-Code of Conduct
----------------
-
-This project adheres to the Contributor Covenant `code of conduct <http://contributor-covenant.org/version/1/4/>`_. By participating, you are expected to uphold this code. Please report unacceptable behaviour to organizer@cloudreach.com.
 
 
 How to Contribute
