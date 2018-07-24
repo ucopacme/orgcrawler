@@ -1,0 +1,65 @@
+
+Thinking about refactering entire package using python classes.
+here is ideas about names of methods and data structures in a class based rework:
+
+
+Org class:
+
+org = awsorgs.Org(
+	master_account_id, 
+	org_access_role='OrganizationAccountAccessRole',
+	log_level='INFO',
+	exec=False,
+	config=None,
+)
+
+# attributes:
+org.root_id	string
+org.log		object
+org.exec	boolean
+org.client	object
+org.spec	object
+org.ou		object
+org.accounts	object
+org.sc_policies	object
+
+# public methods:
+
+# private methods:
+
+
+
+Resource class:  	base class for deployed resource objects
+
+resource = awsorgs.resources.Resource(	
+# attributes:
+resource.rlist		list of dict
+
+# methods:
+resource.__init__()
+resource.lookup()
+resource.report()
+resource.dump()
+
+# sub classes of Resource
+awsorgs.resources.Account
+awsorgs.resources.OrganizationalUnit
+awsorgs.resources.ServiceControlPolicy
+
+
+
+Spec class:	
+
+spec = awsorgs.spec.Spec(
+	config=None, 
+	spec_file_locations=None, 
+	validiation_patterns_file=None,
+)
+
+# attributes:
+spec			dict
+validation_patterns	dict
+
+# methods:
+spec.validate()
+spec.lookup()
