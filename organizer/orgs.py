@@ -1,6 +1,4 @@
 import boto3
-import json
-import yaml
 
 from organizer.utils import assume_role_in_account
 
@@ -75,38 +73,38 @@ class Org(object):
         return next((a.id for a in self.accounts if a.name == name), None)
 
     def get_org_unit_id_by_name(self, name):
-        return next((ou.id for ou in self.org_units if ou.name == name), None) 
+        return next((ou.id for ou in self.org_units if ou.name == name), None)
 
-    ### no tests yet
+    # no tests yet
     def list_accounts_in_ou(self, ou_id):
-        return [dict(Name=a.name, Id=a.id) for a in accounts if a.parent_id == ou_id]
+        return [dict(Name=a.name, Id=a.id) for a in self.accounts if a.parent_id == ou_id]
 
-    ### no tests yet
+    # no tests yet
     def list_account_names_in_ou(self, ou_id):
-        return [a.name for a in accounts if a.parent_id == ou_id]
+        return [a.name for a in self.accounts if a.parent_id == ou_id]
 
-    ### no tests yet
+    # no tests yet
     def list_account_id_in_ou(self, ou_id):
-        return [a.id for a in accounts if a.parent_id == ou_id]
+        return [a.id for a in self.accounts if a.parent_id == ou_id]
 
-    ### no tests yet
+    # no tests yet
     def recurse_org_under_ou(self, parent_id):
         child_ou = []
         for ou in self.org_units:
             if ou.parent_id == parent_id:
-                child_ou = recurse_org_under_ou(self, ou.id)
-                child_ou += [ou for ou in org.org_units if ou.parent_id == parent_id]
+                child_ou = self.recurse_org_under_ou(ou.id)
+                child_ou += [ou for ou in self.org_units if ou.parent_id == parent_id]
         return child_ou
 
-    ### under construction
+    # under construction
     def list_accounts_under_ou(self, ou_id):
         pass
 
-    ### under construction
+    # under construction
     def list_account_names_under_ou(self, ou_id):
         pass
 
-    ### under construction
+    # under construction
     def list_account_id_under_ou(self, ou_id):
         pass
 
@@ -131,4 +129,3 @@ class OrganizationalUnit(OrgObject):
 
     def __init__(self, *args):
         super(OrganizationalUnit, self).__init__(*args)
-

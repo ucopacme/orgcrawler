@@ -2,6 +2,7 @@ import sys
 import boto3
 from botocore.exceptions import ClientError
 
+
 def assume_role_in_account(account_id, role_name):
     role_arn = 'arn:aws:iam::{}:role/{}'.format(account_id, role_name)
     role_session_name = account_id + '-' + role_name.split('/')[-1]
@@ -20,6 +21,3 @@ def assume_role_in_account(account_id, role_name):
         aws_secret_access_key=credentials['SecretAccessKey'],
         aws_session_token=credentials['SessionToken'],
     )
-        
-
-
