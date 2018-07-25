@@ -1,6 +1,7 @@
 import re
 import botocore
 import boto3
+import yaml
 import moto
 from moto import mock_organizations, mock_sts
 
@@ -11,6 +12,50 @@ MASTER_ACCOUNT_ID='123456789012'
 MOCK_ACCOUNT_NAMES = ['account01', 'account02', 'account03']
 MOCK_OU_NAMES = ['ou01', 'ou02', 'ou03']
 
+COMPLEX_ORG_SPEC="""
+root:
+  - name: root
+    accounts:
+    - account01
+    - account02
+    - account03
+    ou:
+      - name: ou01
+        accounts:
+        - account04
+        - account05
+      - name: ou02
+        accounts:
+        - account06
+        - account07
+        ou:
+          - name: ou01-1
+            accounts:
+            - account08
+          - name: ou01-2
+            accounts:
+            - account09
+            - account10
+"""
+
+def mock_org_from_spec(client, spec):
+    print(spec)
+    print(type(spec))
+    for ou in spec:
+        if 'ou' in ou:
+            mock_org_from_spec(client, ou['ou'])
+
+
+@mock_sts
+@mock_organizations
+def test_mock_org():
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    client = org.get_org_client()
+    mock_org_from_spec(client, yaml.load(COMPLEX_ORG_SPEC)['root'])
+    #assert False
+
+    
+    
 
 def setup_mock_organization(client):
     client.create_organization(FeatureSet='ALL')
@@ -23,6 +68,7 @@ def setup_mock_organization(client):
                 ParentId=root_id, Name=name)['OrganizationalUnit']
         client.create_organizational_unit(ParentId=ou['Id'], Name=ou['Name'] +'-sub0')
     return [org_id, root_id]
+
 
 @mock_organizations
 def test_org():
