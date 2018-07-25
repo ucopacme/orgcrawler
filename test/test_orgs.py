@@ -29,25 +29,21 @@ def test_get_org_client():
 
 @mock_sts
 @mock_organizations
-def test_load():
-    account_id = MASTER_ACCOUNT_ID
-    role_name = ORG_ACCESS_ROLE
-    org = orgs.Org(account_id, role_name)
+def test_load_org():
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     client = org.get_org_client()
     client.create_organization(FeatureSet='ALL')
-    org.load()
+    org.load_org()
     assert org.id is not None
     assert org.root_id is not None
  
 @mock_sts
 @mock_organizations
 def test_org_objects():
-    account_id = MASTER_ACCOUNT_ID
-    role_name = ORG_ACCESS_ROLE
-    org = orgs.Org(account_id, role_name)
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     client = org.get_org_client()
     client.create_organization(FeatureSet='ALL')
-    org.load()
+    org.load_org()
     org_object = orgs.OrgObject(org, 'generic')
     assert isinstance(org_object, orgs.OrgObject)
     assert org_object.organization_id == org.id
@@ -72,15 +68,55 @@ def test_org_objects():
 @mock_sts
 @mock_organizations
 def test_load_accounts():
-    account_id = MASTER_ACCOUNT_ID
-    role_name = ORG_ACCESS_ROLE
-    org = orgs.Org(account_id, role_name)
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     client = org.get_org_client()
     client.create_organization(FeatureSet='ALL')
-    org.load()
+    org.load_org()
     for name in ['account01', 'account02', 'account03']:
         client.create_account(AccountName=name, Email=name + '@example.com')
     org.load_accounts()
     assert len(org.accounts) == 3
     assert isinstance(org.accounts[0], orgs.OrgAccount)
     assert org.accounts[0].parent_id == org.root_id
+
+ 
+@mock_sts
+@mock_organizations
+def test_load_org_units():
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    client = org.get_org_client()
+    client.create_organization(FeatureSet='ALL')
+    org.load_org()
+    for name in ['ou01', 'ou02', 'ou03']:
+        client.create_organizational_unit(ParentId=org.root_id, Name=name)
+    org.load_org_units()
+    assert len(org.org_units) == 3
+    assert isinstance(org.org_units[0], orgs.OrganizationalUnit)
+    assert org.org_units[0].parent_id == org.root_id
+    for ou in org.org_units:
+        client.create_organizational_unit(ParentId=ou.id, Name=name +'-sub0')
+    org.org_units = []
+    org.load_org_units()
+    assert len(org.org_units) == 6
+
+ 
+@mock_sts
+@mock_organizations
+def test_load():
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    client = org.get_org_client()
+    client.create_organization(FeatureSet='ALL')
+    org_id = client.describe_organization()['Organization']['Id']
+    root_id = client.list_roots()['Roots'][0]['Id']
+    for name in ['account01', 'account02', 'account03']:
+        client.create_account(AccountName=name, Email=name + '@example.com')
+    for name in ['ou01', 'ou02', 'ou03']:
+        ou = client.create_organizational_unit(
+                ParentId=root_id, Name=name)['OrganizationalUnit']
+        client.create_organizational_unit(ParentId=ou['Id'], Name=ou['Name'] +'-sub0')
+    org.load()
+    assert org.id == org_id
+    assert org.root_id == root_id
+    assert len(org.accounts) == 3
+    assert len(org.org_units) == 6
+

@@ -16,12 +16,17 @@ class Org(object):
         self.org_units = []
         self.sc_policies = []
 
+    def load(self):
+        self.load_org()
+        self.load_accounts()
+        self.load_org_units()
+
     def get_org_client(self):
         credentials = assume_role_in_account(self.master_account_id, self.access_role)
         client = boto3.client('organizations', **credentials)
         return client
 
-    def load(self):
+    def load_org(self):
         client = self.get_org_client()
         response = client.describe_organization()
         self.id = response['Organization']['Id']
@@ -34,6 +39,19 @@ class Org(object):
             parent_id = client.list_parents(ChildId=account['Id'])['Parents'][0]['Id']
             org_account = OrgAccount(self, account['Name'], account['Id'], parent_id)
             self.accounts.append(org_account)
+
+    def recurse_organization(self, client, parent_id):
+        response = client.list_organizational_units_for_parent(ParentId=parent_id)
+        if 'OrganizationalUnits' in response:
+            for ou in response['OrganizationalUnits']:
+                self.org_units.append(
+                    OrganizationalUnit(self, ou['Name'], ou['Id'], parent_id)
+                )
+                self.recurse_organization(client, ou['Id'])
+
+    def load_org_units(self):
+        client = self.get_org_client()
+        self.recurse_organization(client, self.root_id)
 
 
 
