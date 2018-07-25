@@ -1,6 +1,4 @@
-botocore 
-boto3
-PyYAML
 pytest
-moto
+flake8
+#https://github.com/ashleygould/moto/archive/ashley.zip
 
