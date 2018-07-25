@@ -127,7 +127,7 @@ def test_list_accounts():
     assert isinstance(response, list)
     assert len(response) == 3
     for account in response:
-        account['Name'] in MOCK_ACCOUNT_NAMES
+        assert account['Name'] in MOCK_ACCOUNT_NAMES
     for account in response:
         assert re.compile(r'[0-9]{12}').match(account['Id'])
     response = org.list_accounts_by_name()
@@ -139,3 +139,58 @@ def test_list_accounts():
     assert len(response) == 3
     for account_id in response:
         assert re.compile(r'[0-9]{12}').match(account_id)
+
+ 
+@mock_sts
+@mock_organizations
+def test_list_org_units():
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    client = org.get_org_client()
+    org_id, root_id = setup_mock_organization(client)
+    org.load()
+    response = org.list_organizational_units()
+    assert isinstance(response, list)
+    assert len(response) == 6
+    for ou in response:
+        assert isinstance(ou, dict)
+        assert ou['Name'].startswith('ou0')
+        assert ou['Id'].startswith('ou-')
+    response = org.list_organizational_units_by_name()
+    assert isinstance(response, list)
+    assert len(response) == 6
+    for ou_name in response:
+        assert ou_name.startswith('ou0')
+    response = org.list_organizational_units_by_id()
+    assert isinstance(response, list)
+    assert len(response) == 6
+    for ou_id in response:
+        assert ou_id.startswith('ou-')
+
+ 
+@mock_sts
+@mock_organizations
+def test_account_id_by_name():
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    client = org.get_org_client()
+    org_id, root_id = setup_mock_organization(client)
+    org.load()
+    account_id = org.get_account_id_by_name('account01')
+    accounts_by_boto_client = client.list_accounts()['Accounts']
+    assert account_id == next((
+        a['Id'] for a in accounts_by_boto_client if a['Name'] == 'account01'
+    ), None)
+
+ 
+@mock_sts
+@mock_organizations
+def test_account_id_by_name():
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    client = org.get_org_client()
+    org_id, root_id = setup_mock_organization(client)
+    org.load()
+    ou_id = org.get_org_unit_id_by_name('ou02')
+    ou_by_boto_client = client.list_organizational_units_for_parent(
+            ParentId=root_id)['OrganizationalUnits']
+    assert ou_id == next((
+        ou['Id'] for ou in ou_by_boto_client if ou['Name'] == 'ou02'
+    ), None)
