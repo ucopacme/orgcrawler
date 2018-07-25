@@ -53,6 +53,14 @@ class Org(object):
         client = self.get_org_client()
         self.recurse_organization(client, self.root_id)
 
+    def list_accounts(self):
+        return [dict(Name=a.name, Id=a.id) for a in self.accounts]
+
+    def list_accounts_by_name(self):
+        return [a.name for a in self.accounts]
+
+    def list_accounts_by_id(self):
+        return [a.id for a in self.accounts]
 
 
 class OrgObject(object):
