@@ -1,6 +1,6 @@
 import boto3
 
-from organizer.utils import assume_role_in_account
+from organizer.utils import assume_role_in_account, queue_threads
 
 
 class Org(object):
@@ -41,11 +41,25 @@ class Org(object):
             accounts += response['Accounts']
         # only return accounts that have an 'Name' key
         accounts = [account for account in accounts if 'Name' in account]
+
+        #def _make_org_account_object(account, org):
+        #    response = org.client.list_parents(ChildId=account['Id'])
+        #    parent_id = response['Parents'][0]['Id']
+        #    org_account = OrgAccount(org, account['Name'], account['Id'], parent_id)
+        #    org.accounts.append(org_account)
+        #queue_threads(accounts, _make_org_account_object, func_args=(self,))
+
         for account in accounts:
             response = self.client.list_parents(ChildId=account['Id'])
             parent_id = response['Parents'][0]['Id']
             org_account = OrgAccount(self, account['Name'], account['Id'], parent_id)
             self.accounts.append(org_account)
+
+    def _make_org_account_object(self, args):
+        response = self.client.list_parents(ChildId=account['Id'])
+        parent_id = response['Parents'][0]['Id']
+        org_account = OrgAccount(self, account['Name'], account['Id'], parent_id)
+        self.accounts.append(org_account)
 
     def _load_org_units(self):
         self._recurse_organization(self.root_id)

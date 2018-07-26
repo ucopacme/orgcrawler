@@ -1,7 +1,8 @@
 import re
+
 import boto3
-import moto
 from moto import mock_sts, mock_organizations
+import pytest
 
 from organizer import utils
 
@@ -22,6 +23,8 @@ def test_get_master_account_id():
     sts_client = boto3.client('sts')
     account_id = sts_client.get_caller_identity()['Account']
     org_client = boto3.client('organizations')
+    with pytest.raises(SystemExit):
+        master_account_id = utils.get_master_account_id(role_name=role_name)
     org_client.create_organization(FeatureSet='ALL')
     master_account_id = utils.get_master_account_id(role_name=role_name)
     assert re.compile(r'[0-9]{12}').match(master_account_id)

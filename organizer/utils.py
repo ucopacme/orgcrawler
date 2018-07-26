@@ -1,4 +1,10 @@
 import sys
+import threading
+try:
+    import queue
+except ImportError:
+    import Queue as queue
+
 import boto3
 from botocore.exceptions import ClientError
 
@@ -26,17 +32,60 @@ def assume_role_in_account(account_id, role_name):
 
 
 def get_master_account_id(role_name=None):
-    # ISSUE: What exception gets thrown when my account is not part of an org?
-    #        Need to fix moto mock_organizations describe_organization endpoint
     sts_client = boto3.client('sts')
     account_id = sts_client.get_caller_identity()['Account']
     credentials = assume_role_in_account(account_id, role_name)
     client = boto3.client('organizations', **credentials)
     try:
         return client.describe_organization()['Organization']['MasterAccountId']
-    except Exception as e:
-        print('An error occurred while running describe_organization')
-        print(e)
-        return ''
+    except ClientError as e:
+        sys.exit(e)
 
-    
+
+def queue_threads(sequence, func, func_args=(), thread_count=20, debug=False):
+    """generalized abstraction for running queued tasks in a thread pool"""
+    #queue_threads(deployed_accounts, get_account_alias,
+    #        func_args=(role, aliases), thread_count=10)
+    def worker(*args):
+        while not q.empty():
+            item = q.get()
+            func(item, *args)
+            q.task_done()
+    q = queue.Queue()
+    for item in sequence:
+        q.put(item)
+    for i in range(thread_count):
+        t = threading.Thread(target=worker, args=func_args)
+        t.setDaemon(True)
+        t.start()
+    q.join()
+
+
+#def queue_threads(sequence, func, func_args=(), thread_count=20, debug=False):
+#    """generalized abstraction for running queued tasks in a thread pool"""
+#    #queue_threads(deployed_accounts, get_account_alias,
+#    #        func_args=(role, aliases), thread_count=10)
+#    def worker(*args):
+#        if debug:
+#            print('%s: q.empty: %s' % (threading.current_thread().name, q.empty()))
+#        while not q.empty():
+#            if debug:
+#                print('%s: task: %s' % (threading.current_thread().name, func))
+#            item = q.get()
+#            if debug:
+#                print('%s: processing item: %s' % (threading.current_thread().name, item))
+#            func(item, *args)
+#            q.task_done()
+#    q = queue.Queue()
+#    for item in sequence:
+#        if debug:
+#            print('queuing item: %s' % item)
+#        q.put(item)
+#    if debug:
+#        print('queue length: %s' % q.qsize())
+#    for i in range(thread_count):
+#        t = threading.Thread(target=worker, args=func_args)
+#        t.setDaemon(True)
+#        t.start()
+#    q.join()
+
