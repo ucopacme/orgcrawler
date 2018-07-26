@@ -35,10 +35,15 @@ class Org(object):
 
     def _load_accounts(self):
         response = self.client.list_accounts()
-        for account in response['Accounts']:
-            parent_id = self.client.list_parents(
-                ChildId=account['Id']
-            )['Parents'][0]['Id']
+        accounts = response['Accounts']
+        while 'NextToken' in response and response['NextToken']:
+            response = self.client.list_accounts(NextToken=response['NextToken'])
+            accounts += response['Accounts']
+        # only return accounts that have an 'Name' key
+        accounts = [account for account in accounts if 'Name' in account ]
+        for account in accounts:
+            response = self.client.list_parents(ChildId=account['Id'])
+            parent_id = response['Parents'][0]['Id']
             org_account = OrgAccount(self, account['Name'], account['Id'], parent_id)
             self.accounts.append(org_account)
 
@@ -68,13 +73,13 @@ class Org(object):
     def list_accounts_by_id(self):
         return [a.id for a in self.accounts]
 
-    def list_organizational_units(self):
+    def list_org_units(self):
         return [dict(Name=ou.name, Id=ou.id) for ou in self.org_units]
 
-    def list_organizational_units_by_name(self):
+    def list_org_units_by_name(self):
         return [ou.name for ou in self.org_units]
 
-    def list_organizational_units_by_id(self):
+    def list_org_units_by_id(self):
         return [ou.id for ou in self.org_units]
 
     def get_account_id_by_name(self, name):

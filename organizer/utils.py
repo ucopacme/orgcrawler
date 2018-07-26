@@ -21,3 +21,12 @@ def assume_role_in_account(account_id, role_name):
         aws_secret_access_key=credentials['SecretAccessKey'],
         aws_session_token=credentials['SessionToken'],
     )
+
+
+def get_master_account_id(role_name=None):
+    sts_client = boto3.client('sts')
+    account_id = sts_client.get_caller_identity()['Account']
+    credentials = assume_role_in_account(account_id, role_name)
+    client = boto3.client('organizations', **credentials)
+    return client.describe_organization()['Organization']['MasterAccountId']
+    

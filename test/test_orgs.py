@@ -236,7 +236,7 @@ def test_list_org_units():
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
     org.load()
 
-    response = org.list_organizational_units()
+    response = org.list_org_units()
     assert isinstance(response, list)
     assert len(response) == 6
     for ou in response:
@@ -244,13 +244,13 @@ def test_list_org_units():
         assert ou['Name'].startswith('ou0')
         assert ou['Id'].startswith('ou-')
 
-    response = org.list_organizational_units_by_name()
+    response = org.list_org_units_by_name()
     assert isinstance(response, list)
     assert len(response) == 6
     for ou_name in response:
         assert ou_name.startswith('ou0')
 
-    response = org.list_organizational_units_by_id()
+    response = org.list_org_units_by_id()
     assert isinstance(response, list)
     assert len(response) == 6
     for ou_id in response:
