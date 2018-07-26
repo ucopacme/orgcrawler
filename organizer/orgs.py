@@ -40,7 +40,7 @@ class Org(object):
             response = self.client.list_accounts(NextToken=response['NextToken'])
             accounts += response['Accounts']
         # only return accounts that have an 'Name' key
-        accounts = [account for account in accounts if 'Name' in account ]
+        accounts = [account for account in accounts if 'Name' in account]
         for account in accounts:
             response = self.client.list_parents(ChildId=account['Id'])
             parent_id = response['Parents'][0]['Id']
@@ -52,12 +52,18 @@ class Org(object):
 
     def _recurse_organization(self, parent_id):
         response = self.client.list_organizational_units_for_parent(ParentId=parent_id)
-        if 'OrganizationalUnits' in response:
-            for ou in response['OrganizationalUnits']:
-                self.org_units.append(
-                    OrganizationalUnit(self, ou['Name'], ou['Id'], parent_id)
-                )
-                self._recurse_organization(ou['Id'])
+        org_units = response['OrganizationalUnits']
+        while 'NextToken' in response and response['NextToken']:
+            response = self.client.list_organizational_units_for_parent(
+                ParentId=parent_id,
+                NextToken=response['NextToken']
+            )
+            org_units += response['OrganizationalUnits']
+        for ou in org_units:
+            self.org_units.append(
+                OrganizationalUnit(self, ou['Name'], ou['Id'], parent_id)
+            )
+            self._recurse_organization(ou['Id'])
 
     def get_org_client(self):
         """ Returns a boto3 client for Organizations object """

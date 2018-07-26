@@ -14,7 +14,9 @@ def assume_role_in_account(account_id, role_name):
         )['Credentials']
     except ClientError as e:
         if e.response['Error']['Code'] == 'AccessDenied':
-            errmsg = 'cannot assume role {} in account {}'.format(role_name, account_id)
+            errmsg = 'cannot assume role {} in account {}: AccessDenied'.format(
+                role_name, account_id
+            )
             sys.exit(errmsg)
     return dict(
         aws_access_key_id=credentials['AccessKeyId'],
@@ -24,9 +26,17 @@ def assume_role_in_account(account_id, role_name):
 
 
 def get_master_account_id(role_name=None):
+    # ISSUE: What exception gets thrown when my account is not part of an org?
+    #        Need to fix moto mock_organizations describe_organization endpoint
     sts_client = boto3.client('sts')
     account_id = sts_client.get_caller_identity()['Account']
     credentials = assume_role_in_account(account_id, role_name)
     client = boto3.client('organizations', **credentials)
-    return client.describe_organization()['Organization']['MasterAccountId']
+    try:
+        return client.describe_organization()['Organization']['MasterAccountId']
+    except Exception as e:
+        print('An error occurred while running describe_organization')
+        print(e)
+        return ''
+
     
