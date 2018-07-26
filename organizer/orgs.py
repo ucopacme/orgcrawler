@@ -15,22 +15,22 @@ class Org(object):
         self.sc_policies = []
 
     def load(self):
-        self.load_org()
-        self.load_accounts()
-        self.load_org_units()
+        self._load_org()
+        self._load_accounts()
+        self._load_org_units()
 
     def get_org_client(self):
         credentials = assume_role_in_account(self.master_account_id, self.access_role)
         client = boto3.client('organizations', **credentials)
         return client
 
-    def load_org(self):
+    def _load_org(self):
         client = self.get_org_client()
         response = client.describe_organization()
         self.id = response['Organization']['Id']
         self.root_id = client.list_roots()['Roots'][0]['Id']
 
-    def load_accounts(self):
+    def _load_accounts(self):
         client = self.get_org_client()
         response = client.list_accounts()
         for account in response['Accounts']:
@@ -38,18 +38,18 @@ class Org(object):
             org_account = OrgAccount(self, account['Name'], account['Id'], parent_id)
             self.accounts.append(org_account)
 
-    def load_org_units(self):
+    def _load_org_units(self):
         client = self.get_org_client()
-        self.recurse_organization(client, self.root_id)
+        self._recurse_organization(client, self.root_id)
 
-    def recurse_organization(self, client, parent_id):
+    def _recurse_organization(self, client, parent_id):
         response = client.list_organizational_units_for_parent(ParentId=parent_id)
         if 'OrganizationalUnits' in response:
             for ou in response['OrganizationalUnits']:
                 self.org_units.append(
                     OrganizationalUnit(self, ou['Name'], ou['Id'], parent_id)
                 )
-                self.recurse_organization(client, ou['Id'])
+                self._recurse_organization(client, ou['Id'])
 
     def list_accounts(self):
         return [dict(Name=a.name, Id=a.id) for a in self.accounts]
@@ -75,38 +75,37 @@ class Org(object):
     def get_org_unit_id_by_name(self, name):
         return next((ou.id for ou in self.org_units if ou.name == name), None)
 
-    # no tests yet
     def list_accounts_in_ou(self, ou_id):
         return [dict(Name=a.name, Id=a.id) for a in self.accounts if a.parent_id == ou_id]
 
-    # no tests yet
-    def list_account_names_in_ou(self, ou_id):
+    def list_accounts_in_ou_by_name(self, ou_id):
         return [a.name for a in self.accounts if a.parent_id == ou_id]
 
-    # no tests yet
-    def list_account_id_in_ou(self, ou_id):
+    def list_accounts_in_ou_by_id(self, ou_id):
         return [a.id for a in self.accounts if a.parent_id == ou_id]
 
-    # no tests yet
-    def recurse_org_under_ou(self, parent_id):
-        child_ou = []
-        for ou in self.org_units:
-            if ou.parent_id == parent_id:
-                child_ou = self.recurse_org_under_ou(ou.id)
-                child_ou += [ou for ou in self.org_units if ou.parent_id == parent_id]
-        return child_ou
+    def _recurse_org_units_under_ou(self, parent_id):
+        ou_id_list = [
+            ou.id for ou in self.org_units
+            if ou.parent_id == parent_id
+        ]
+        for ou_id in ou_id_list:
+            ou_id_list += self._recurse_org_units_under_ou(ou_id)
+        return ou_id_list
 
-    # under construction
     def list_accounts_under_ou(self, ou_id):
-        pass
+        account_list = self.list_accounts_in_ou(ou_id)
+        for ou_id in self._recurse_org_units_under_ou(ou_id):
+            account_list += self.list_accounts_in_ou(ou_id)
+        return account_list
 
-    # under construction
-    def list_account_names_under_ou(self, ou_id):
-        pass
+    def list_accounts_under_ou_by_name(self, ou_id):
+        response = self.list_accounts_under_ou(ou_id)
+        return [a['Name'] for a in response]
 
-    # under construction
-    def list_account_id_under_ou(self, ou_id):
-        pass
+    def list_accounts_under_ou_by_id(self, ou_id):
+        response = self.list_accounts_under_ou(ou_id)
+        return [a['Id'] for a in response]
 
 
 class OrgObject(object):
