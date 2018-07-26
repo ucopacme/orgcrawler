@@ -115,10 +115,18 @@ def test_get_org_client():
 
 @mock_sts
 @mock_organizations
+def test_load_client():
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org._load_client()
+    assert str(type(org.client)).find('botocore.client.Organizations') > 0
+
+@mock_sts
+@mock_organizations
 def test__load_org():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     client = org.get_org_client()
     client.create_organization(FeatureSet='ALL')
+    org._load_client()
     org._load_org()
     assert org.id is not None
     assert org.root_id is not None
@@ -129,6 +137,7 @@ def test_org_objects():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     client = org.get_org_client()
     client.create_organization(FeatureSet='ALL')
+    org._load_client()
     org._load_org()
 
     org_object = orgs.OrgObject(org, 'generic')
@@ -158,8 +167,8 @@ def test_org_objects():
 @mock_organizations
 def test_load_accounts():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    client = org.get_org_client()
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
+    org._load_client()
     org._load_org()
     org._load_accounts()
     assert len(org.accounts) == 3
@@ -171,8 +180,8 @@ def test_load_accounts():
 @mock_organizations
 def test_load_org_units():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    client = org.get_org_client()
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
+    org._load_client()
     org._load_org()
     org._load_org_units()
     assert len(org.org_units) == 6
@@ -184,7 +193,6 @@ def test_load_org_units():
 @mock_organizations
 def test_load():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    client = org.get_org_client()
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
     org.load()
     assert org.id == org_id
@@ -197,7 +205,6 @@ def test_load():
 @mock_organizations
 def test_list_accounts():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    client = org.get_org_client()
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
     org.load()
 
@@ -226,7 +233,6 @@ def test_list_accounts():
 @mock_organizations
 def test_list_org_units():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    client = org.get_org_client()
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
     org.load()
 
@@ -255,11 +261,10 @@ def test_list_org_units():
 @mock_organizations
 def test_get_account_id_by_name():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    client = org.get_org_client()
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
     org.load()
     account_id = org.get_account_id_by_name('account01')
-    accounts_by_boto_client = client.list_accounts()['Accounts']
+    accounts_by_boto_client = org.client.list_accounts()['Accounts']
     assert account_id == next((
         a['Id'] for a in accounts_by_boto_client if a['Name'] == 'account01'
     ), None)
@@ -269,11 +274,10 @@ def test_get_account_id_by_name():
 @mock_organizations
 def test_get_org_unit_id_by_name():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    client = org.get_org_client()
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
     org.load()
     ou_id = org.get_org_unit_id_by_name('ou02')
-    ou_by_boto_client = client.list_organizational_units_for_parent(
+    ou_by_boto_client = org.client.list_organizational_units_for_parent(
             ParentId=root_id)['OrganizationalUnits']
     assert ou_id == next((
         ou['Id'] for ou in ou_by_boto_client if ou['Name'] == 'ou02'
@@ -284,13 +288,14 @@ def test_get_org_unit_id_by_name():
 @mock_organizations
 def test_list_accounts_in_ou():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    client = org.get_org_client()
     org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
     org.load()
     ou_id = org.get_org_unit_id_by_name('ou02')
 
     response = org.list_accounts_in_ou(ou_id)
-    accounts_by_boto_client = client.list_accounts_for_parent(ParentId=ou_id)['Accounts']
+    accounts_by_boto_client = org.client.list_accounts_for_parent(
+        ParentId=ou_id
+    )['Accounts']
     for account in response:
         assert account['Id'] == next((
             a['Id'] for a in accounts_by_boto_client
@@ -308,7 +313,6 @@ def test_list_accounts_in_ou():
 @mock_organizations
 def test_list_accounts_under_ou():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    client = org.get_org_client()
     org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
     org.load()
     ou02_id = org.get_org_unit_id_by_name('ou02')

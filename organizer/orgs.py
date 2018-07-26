@@ -12,44 +12,52 @@ class Org(object):
         self.root_id = None
         self.accounts = []
         self.org_units = []
-        self.sc_policies = []
 
     def load(self):
+        """
+        Make boto3 client calls to populate the Org object's Account and
+        OrganizationalUnit resource data
+        """
+        self._load_client()
         self._load_org()
+        self.accounts = []
         self._load_accounts()
+        self.org_units = []
         self._load_org_units()
 
-    def get_org_client(self):
-        credentials = assume_role_in_account(self.master_account_id, self.access_role)
-        client = boto3.client('organizations', **credentials)
-        return client
+    def _load_client(self):
+        self.client = self.get_org_client()
 
     def _load_org(self):
-        client = self.get_org_client()
-        response = client.describe_organization()
+        response = self.client.describe_organization()
         self.id = response['Organization']['Id']
-        self.root_id = client.list_roots()['Roots'][0]['Id']
+        self.root_id = self.client.list_roots()['Roots'][0]['Id']
 
     def _load_accounts(self):
-        client = self.get_org_client()
-        response = client.list_accounts()
+        response = self.client.list_accounts()
         for account in response['Accounts']:
-            parent_id = client.list_parents(ChildId=account['Id'])['Parents'][0]['Id']
+            parent_id = self.client.list_parents(
+                ChildId=account['Id']
+            )['Parents'][0]['Id']
             org_account = OrgAccount(self, account['Name'], account['Id'], parent_id)
             self.accounts.append(org_account)
 
     def _load_org_units(self):
-        client = self.get_org_client()
-        self._recurse_organization(client, self.root_id)
+        self._recurse_organization(self.root_id)
 
-    def _recurse_organization(self, client, parent_id):
-        response = client.list_organizational_units_for_parent(ParentId=parent_id)
+    def _recurse_organization(self, parent_id):
+        response = self.client.list_organizational_units_for_parent(ParentId=parent_id)
         if 'OrganizationalUnits' in response:
             for ou in response['OrganizationalUnits']:
                 self.org_units.append(
                     OrganizationalUnit(self, ou['Name'], ou['Id'], parent_id)
                 )
-                self._recurse_organization(client, ou['Id'])
+                self._recurse_organization(ou['Id'])
+
+    def get_org_client(self):
+        """ Returns a boto3 client for Organizations object """
+        credentials = assume_role_in_account(self.master_account_id, self.access_role)
+        return boto3.client('organizations', **credentials)
 
     def list_accounts(self):
         return [dict(Name=a.name, Id=a.id) for a in self.accounts]
