@@ -1,4 +1,58 @@
+________________________________________________________________________________
+7/26/2018
+botocore.errorfactory.TooManyRequestsException: An error occurred (TooManyRequestsException) when calling the ListParents operation (reached max retries: 4): AWS Organizations can't complete your request because another request is already in progress. Try again later.
 
+---
+
+https://any-api.com/amazonaws_com/organizations/docs/Definitions/TooManyRequestsException
+object:TooManyRequestsException
+You've sent too many requests in too short a period of time. The limit helps protect against denial-of-service attacks. Try again later.
+
+Message:string:ExceptionMessage
+Type:string:ExceptionType
+
+---
+
+https://stackoverflow.com/questions/51156619/toomanyrequestsexception-for-boto3-client-organization/51297673
+
+class AWSAccounts(object):
+    """ Return AWS Accounts information. """  
+    def get_accounts(self, next_token=None, max_results=None):
+        """Get Accounts List"""
+        # If Master AWS account contain more child accounts(150+) then
+        # Too-Many-Request Exception is raised by the AWS API(boto3).
+        # So to fix this issue, we are calling API again by Exception Handling.
+        result = None
+        while True:
+            try:
+                if next_token and max_results:
+                    result = self.client.list_accounts(NextToken=next_token,
+                                                       MaxResults=max_results)
+                elif next_token:
+                    result = self.client.list_accounts(NextToken=next_token)
+                elif max_results:
+                    result = self.client.list_accounts(MaxResults=max_results)
+                else:
+                    result = self.client.list_accounts()
+            except botocore.exceptions.ClientError as err:
+                response = err.response
+                print("Failed to list accounts:", response)
+                if (response and response.get("Error", {}).get("Code") ==
+                        "TooManyRequestsException"):
+                    print("Continue for TooManyRequestsException exception.")
+                    continue
+
+            break
+
+        return result
+
+
+
+
+
+
+
+________________________________________________________________________________
 Thinking about refactering entire package using python classes.
 here is ideas about names of methods and data structures in a class based rework:
 

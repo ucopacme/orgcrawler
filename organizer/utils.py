@@ -42,10 +42,8 @@ def get_master_account_id(role_name=None):
         sys.exit(e)
 
 
-def queue_threads(sequence, func, func_args=(), thread_count=20, debug=False):
+def queue_threads(sequence, func, func_args=(), thread_count=20):
     """generalized abstraction for running queued tasks in a thread pool"""
-    #queue_threads(deployed_accounts, get_account_alias,
-    #        func_args=(role, aliases), thread_count=10)
     def worker(*args):
         while not q.empty():
             item = q.get()
@@ -59,33 +57,4 @@ def queue_threads(sequence, func, func_args=(), thread_count=20, debug=False):
         t.setDaemon(True)
         t.start()
     q.join()
-
-
-#def queue_threads(sequence, func, func_args=(), thread_count=20, debug=False):
-#    """generalized abstraction for running queued tasks in a thread pool"""
-#    #queue_threads(deployed_accounts, get_account_alias,
-#    #        func_args=(role, aliases), thread_count=10)
-#    def worker(*args):
-#        if debug:
-#            print('%s: q.empty: %s' % (threading.current_thread().name, q.empty()))
-#        while not q.empty():
-#            if debug:
-#                print('%s: task: %s' % (threading.current_thread().name, func))
-#            item = q.get()
-#            if debug:
-#                print('%s: processing item: %s' % (threading.current_thread().name, item))
-#            func(item, *args)
-#            q.task_done()
-#    q = queue.Queue()
-#    for item in sequence:
-#        if debug:
-#            print('queuing item: %s' % item)
-#        q.put(item)
-#    if debug:
-#        print('queue length: %s' % q.qsize())
-#    for i in range(thread_count):
-#        t = threading.Thread(target=worker, args=func_args)
-#        t.setDaemon(True)
-#        t.start()
-#    q.join()
 
