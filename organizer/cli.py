@@ -1,20 +1,21 @@
 #!/usr/bin/env python
 
 """
-Example script for querying Organization resources
+Script for querying AWS Organization resources
 
 Usage:
     organizer [-h]
-    organizer -r ROLE_NAME -c COMMAND [-o OU_NAME] [-a ACCOUNT_NAME]
+    organizer ROLE COMMAND [ARGUMENT]
+
+Arguments:
+    ROLE        The AWS role name to assume when running organizer
+    COMMAND     An organizer query command to run
+    ARGUMENT    A command argument to supply if needed
 
 Options:
-    -h, --help                       Print help message
-    -r, --role ROLE_NAME             Role to assume when querying AWS Organizations
-    -c, --command COMMAND            Organizer quary to run
-    -o, --ou-name OU_NAME            Name of an organizational unit
-    -a, --account-name ACCOUNT_NAME  Name of account
+    -h, --help  Print help message
 
-Available Commands:
+Available Query Commands:
     list_accounts
     list_accounts_by_name
     list_accounts_by_id
@@ -31,10 +32,32 @@ Available Commands:
     get_org_unit_id_by_name OU_NAME
 """
 
+
+import sys
 import yaml
 from docopt import docopt
 from organizer import orgs
 from organizer.utils import get_master_account_id
+
+
+_COMMANDS = [
+    'list_accounts_by_name',
+    'list_accounts_by_id',
+    'list_org_units',
+    'list_org_units_by_name',
+    'list_org_units_by_id',
+]
+_COMMANDS_WITH_ARG = [
+    'list_accounts_in_ou',
+    'list_accounts_in_ou_by_name',
+    'list_accounts_in_ou_by_id',
+    'list_accounts_under_ou',
+    'list_accounts_under_ou_by_name',
+    'list_accounts_under_ou_by_id',
+    'get_account_id_by_name',
+    'get_org_unit_id_by_name',
+]
+AVAILABLE_COMMANDS = _COMMANDS + _COMMANDS_WITH_ARG
 
 
 def yamlfmt(obj):
@@ -45,16 +68,20 @@ def yamlfmt(obj):
 
 def main():
     args = docopt(__doc__)
-    master_account_id = get_master_account_id(args['--role'])
-    org = orgs.Org(master_account_id, args['--role'])
+    if len(sys.argv) == 1:
+        sys.exit(__doc__)
+    if args['COMMAND'] not in AVAILABLE_COMMANDS:
+        print('ERROR: "{}" not an available query command'.format(args['COMMAND']))
+        sys.exit(__doc__)
+    if args['COMMAND'] in _COMMANDS_WITH_ARG and not args['ARGUMENT']:
+        print('ERROR: Query command "{}" requires an argument'.format(args['COMMAND']))
+        sys.exit(__doc__)
+    master_account_id = get_master_account_id(args['ROLE'])
+    org = orgs.Org(master_account_id, args['ROLE'])
     org.load()
-    cmd = eval('org.' + args['--command'])
-    if args['--ou-name']:
-        arg = org.get_org_unit_id_by_name(args['--ou-name'])
-        print(yamlfmt(cmd(arg)))
-    elif args['--account-name']:
-        arg = args['--account-name']
-        print(yamlfmt(cmd(arg)))
+    cmd = eval('org.' + args['COMMAND'])
+    if args['ARGUMENT']:
+        print(yamlfmt(cmd(args.get('ARGUMENT'))))
     else:
         print(yamlfmt(cmd()))
 
