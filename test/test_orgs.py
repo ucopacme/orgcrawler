@@ -122,7 +122,7 @@ def test_load_client():
 
 @mock_sts
 @mock_organizations
-def test__load_org():
+def test_load_org():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     client = org.get_org_client()
     client.create_organization(FeatureSet='ALL')

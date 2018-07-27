@@ -1,4 +1,3 @@
 pytest
 flake8
-#https://github.com/ashleygould/moto/archive/ashley.zip
 
