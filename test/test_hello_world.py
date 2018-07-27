@@ -11,4 +11,4 @@ def test_hello_world():
 def test_hello_eric():
 
     response = organizer.hello_world.hello_eric()
-    assert response == 'hello eric'
+    assert response == 'Hello Eric'
