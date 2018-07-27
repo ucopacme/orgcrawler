@@ -1,6 +1,10 @@
 language: python
 python:
   - 3.6
+before_install:
+  - env
+  - whoami
+  - cat /etc/issue
 install:
   - pip install .
   - pip install -r requirements.txt
