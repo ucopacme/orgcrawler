@@ -29,6 +29,7 @@ Available Query Commands:
     list_accounts_under_ou_by_name OU_NAME
     list_accounts_under_ou_by_id OU_NAME
     get_account_id_by_name ACCOUNT_NAME
+    get_account_name_by_id ACCOUNT_ID
     get_org_unit_id_by_name OU_NAME
 """
 
@@ -55,6 +56,7 @@ _COMMANDS_WITH_ARG = [
     'list_accounts_under_ou_by_name',
     'list_accounts_under_ou_by_id',
     'get_account_id_by_name',
+    'get_account_name_by_id',
     'get_org_unit_id_by_name',
 ]
 AVAILABLE_COMMANDS = _COMMANDS + _COMMANDS_WITH_ARG

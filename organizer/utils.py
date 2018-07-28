@@ -41,6 +41,7 @@ def get_master_account_id(role_name=None):
     except ClientError as e:
         sys.exit(e)
 
+
 # NO TEST YET
 def queue_threads(sequence, func, func_args=(), thread_count=20):
     """generalized abstraction for running queued tasks in a thread pool"""

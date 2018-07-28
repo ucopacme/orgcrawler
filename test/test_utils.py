@@ -1,4 +1,5 @@
 import re
+import time
 
 import boto3
 from moto import mock_sts, mock_organizations
@@ -28,3 +29,22 @@ def test_get_master_account_id():
     org_client.create_organization(FeatureSet='ALL')
     master_account_id = utils.get_master_account_id(role_name=role_name)
     assert re.compile(r'[0-9]{12}').match(master_account_id)
+
+
+def test_queue_threads():
+    collector = []
+    def thread_test(item, collector):
+        time.sleep(0.1)
+        collector.append('item-{}'.format(item))
+    starttime = time.perf_counter()
+    utils.queue_threads(
+        range(10),
+        thread_test,
+        (collector,),
+        thread_count=10
+    )
+    stoptime = time.perf_counter()
+    assert len(collector) == 10
+    for item in collector:
+        assert re.compile(r'item-[0-9]').match(item)
+    assert int((stoptime - starttime) *10) == 1

@@ -57,7 +57,6 @@ class Org(object):
             org.accounts.append(org_account)
         queue_threads(accounts, _make_org_account_object, func_args=(self,), thread_count=len(accounts))
 
-
     def _load_org_units(self):
         self._recurse_organization(self.root_id)
 
@@ -101,6 +100,9 @@ class Org(object):
 
     def get_account_id_by_name(self, name):
         return next((a.id for a in self.accounts if a.name == name), None)
+
+    def get_account_name_by_id(self, account_id):
+        return next((a.name for a in self.accounts if a.id == account_id), None)
 
     def get_org_unit_id_by_name(self, name):
         return next((ou.id for ou in self.org_units if ou.name == name), None)

@@ -272,6 +272,20 @@ def test_get_account_id_by_name():
  
 @mock_sts
 @mock_organizations
+def test_get_account_id_by_name():
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
+    org.load()
+    account_id = org.get_account_id_by_name('account01')
+    account_name = org.get_account_name_by_id(account_id)
+    accounts_by_boto_client = org.client.list_accounts()['Accounts']
+    assert account_name == next((
+        a['Name'] for a in accounts_by_boto_client if a['Id'] == account_id
+    ), None)
+
+ 
+@mock_sts
+@mock_organizations
 def test_get_org_unit_id_by_name():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
