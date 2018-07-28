@@ -1,3 +1,4 @@
+import json
 import boto3
 from botocore.exceptions import ClientError
 
@@ -25,6 +26,24 @@ class Org(object):
         self._load_accounts()
         self.org_units = []
         self._load_org_units()
+
+    def dump(self):
+        """
+        Return loaded Org object as dictionary
+        """
+        return dict(
+            Id=self.id,
+            MasterAccountId=self.master_account_id,
+            RootId=self.root_id,
+            Accounts=[a.dump() for a in self.accounts],
+            OrganizationalUnits=[ou.dump() for ou in self.org_units],
+        )
+
+    def dump_json(self):
+        """
+        Return loaded Org object as formatted json string
+        """
+        return json.dumps(self.dump(), indent=4, separators=(',', ': '))
 
     def _load_client(self):
         self.client = self.get_org_client()
@@ -155,6 +174,13 @@ class OrgObject(object):
         self.name = name
         self.id = object_id
         self.parent_id = parent_id
+
+    def dump(self):
+        return dict(
+            Name=self.name,
+            Id=self.id,
+            ParentId=self.parent_id,
+        )
 
 
 class OrgAccount(OrgObject):

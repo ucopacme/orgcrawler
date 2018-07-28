@@ -2,6 +2,7 @@ import re
 import botocore
 import boto3
 import yaml
+import json
 import moto
 from moto import mock_organizations, mock_sts
 
@@ -361,3 +362,29 @@ def test_list_accounts_under_ou():
     assert len(response) == 5
     for account_id in response:
         assert re.compile(r'[0-9]{12}').match(account_id)
+
+
+
+@mock_sts
+@mock_organizations
+def test_org_dump():
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
+    org.load()
+    dump = org.dump()
+    assert isinstance(dump, dict)
+    assert dump['Id']
+    assert dump['Id'].startswith('o-')
+    assert re.compile(r'[0-9]{12}').match(dump['MasterAccountId'])
+    assert dump['RootId'].startswith('r-')
+    for account in dump['Accounts']:
+        assert re.compile(r'[0-9]{12}').match(account['Id'])
+        assert account['Name'].startswith('account')
+        assert account['ParentId'].startswith(('r-', 'ou-'))
+    for ou in dump['OrganizationalUnits']:
+        assert ou['Id'].startswith('ou-')
+        assert ou['Name'].startswith('ou')
+        assert ou['ParentId'].startswith(('r-', 'ou-'))
+    json_dump = org.dump_json()
+    assert isinstance(json_dump, str)
+    assert json.loads(json_dump) == dump
