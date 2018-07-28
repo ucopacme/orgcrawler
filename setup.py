@@ -36,6 +36,7 @@ setup(
         'boto3',
         'awscli',
         'PyYAML',
+        'docopt',
     ],
     packages=find_packages(
         '.',
