@@ -1,10 +1,16 @@
 ________________________________________________________________________________
 7/26/2018
+
+intermitant error from Org._load_accounts:
+
 botocore.errorfactory.TooManyRequestsException: An error occurred (TooManyRequestsException) when calling the ListParents operation (reached max retries: 4): AWS Organizations can't complete your request because another request is already in progress. Try again later.
+
+Not possitive is this is from within queue_threads or when checking for NextToken.
 
 ---
 
 https://any-api.com/amazonaws_com/organizations/docs/Definitions/TooManyRequestsException
+
 object:TooManyRequestsException
 You've sent too many requests in too short a period of time. The limit helps protect against denial-of-service attacks. Try again later.
 
@@ -12,6 +18,8 @@ Message:string:ExceptionMessage
 Type:string:ExceptionType
 
 ---
+
+Here is how someone else fixes it:
 
 https://stackoverflow.com/questions/51156619/toomanyrequestsexception-for-boto3-client-organization/51297673
 
