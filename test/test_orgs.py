@@ -2,6 +2,7 @@ import re
 import botocore
 import boto3
 import yaml
+import json
 import moto
 from moto import mock_organizations, mock_sts
 
@@ -236,7 +237,7 @@ def test_list_org_units():
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
     org.load()
 
-    response = org.list_organizational_units()
+    response = org.list_org_units()
     assert isinstance(response, list)
     assert len(response) == 6
     for ou in response:
@@ -244,13 +245,13 @@ def test_list_org_units():
         assert ou['Name'].startswith('ou0')
         assert ou['Id'].startswith('ou-')
 
-    response = org.list_organizational_units_by_name()
+    response = org.list_org_units_by_name()
     assert isinstance(response, list)
     assert len(response) == 6
     for ou_name in response:
         assert ou_name.startswith('ou0')
 
-    response = org.list_organizational_units_by_id()
+    response = org.list_org_units_by_id()
     assert isinstance(response, list)
     assert len(response) == 6
     for ou_id in response:
@@ -267,6 +268,20 @@ def test_get_account_id_by_name():
     accounts_by_boto_client = org.client.list_accounts()['Accounts']
     assert account_id == next((
         a['Id'] for a in accounts_by_boto_client if a['Name'] == 'account01'
+    ), None)
+
+ 
+@mock_sts
+@mock_organizations
+def test_get_account_id_by_name():
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
+    org.load()
+    account_id = org.get_account_id_by_name('account01')
+    account_name = org.get_account_name_by_id(account_id)
+    accounts_by_boto_client = org.client.list_accounts()['Accounts']
+    assert account_name == next((
+        a['Name'] for a in accounts_by_boto_client if a['Id'] == account_id
     ), None)
 
  
@@ -347,3 +362,29 @@ def test_list_accounts_under_ou():
     assert len(response) == 5
     for account_id in response:
         assert re.compile(r'[0-9]{12}').match(account_id)
+
+
+
+@mock_sts
+@mock_organizations
+def test_org_dump():
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
+    org.load()
+    dump = org.dump()
+    assert isinstance(dump, dict)
+    assert dump['Id']
+    assert dump['Id'].startswith('o-')
+    assert re.compile(r'[0-9]{12}').match(dump['MasterAccountId'])
+    assert dump['RootId'].startswith('r-')
+    for account in dump['Accounts']:
+        assert re.compile(r'[0-9]{12}').match(account['Id'])
+        assert account['Name'].startswith('account')
+        assert account['ParentId'].startswith(('r-', 'ou-'))
+    for ou in dump['OrganizationalUnits']:
+        assert ou['Id'].startswith('ou-')
+        assert ou['Name'].startswith('ou')
+        assert ou['ParentId'].startswith(('r-', 'ou-'))
+    json_dump = org.dump_json()
+    assert isinstance(json_dump, str)
+    assert json.loads(json_dump) == dump
