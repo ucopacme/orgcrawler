@@ -1,11 +1,24 @@
 import re
 import time
+import json
+import yaml
 
 import boto3
 from moto import mock_sts, mock_organizations
 import pytest
 
 from organizer import utils
+from .test_orgs import SIMPLE_ORG_SPEC
+
+
+def test_jsonfmt():
+    output = utils.jsonfmt(SIMPLE_ORG_SPEC)
+    assert isinstance(output, str)
+
+
+def test_yamlfmt():
+    output = utils.yamlfmt(SIMPLE_ORG_SPEC)
+    assert isinstance(output, str)
 
 @mock_sts
 def test_assume_role_in_account():

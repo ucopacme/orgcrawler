@@ -1,9 +1,6 @@
 import time
 
-import boto3
-#from botocore.exceptions import ClientError
-
-from organizer import orgs, utils
+from organizer import utils
 
 
 DEFAULT_REGION = 'us-east-1'
@@ -29,7 +26,7 @@ class Crawler(object):
         )
 
     def execute(self, payload, *args, **kwargs):
-        thread_count = kwargs.get('thread_count', len(self.accounts))
+        # thread_count = kwargs.get('thread_count', len(self.accounts))
         request = CrawlerRequest(payload)
         request.timer.start()
         for region in self.regions:
@@ -41,7 +38,6 @@ class Crawler(object):
                 request.responses.append(response)
         request.timer.stop()
         self.requests.append(request)
-        
 
     def get_request_by_name(self, name):
         return next((
@@ -51,9 +47,9 @@ class Crawler(object):
 class CrawlerTimer(object):
 
     def __init__(self):
-       self.start_time = None
-       self.end_time = None
-       self.elapsed_time = None
+        self.start_time = None
+        self.end_time = None
+        self.elapsed_time = None
 
     def start(self):
         self.start_time = time.perf_counter()
@@ -103,4 +99,3 @@ class CrawlerResponse(object):
             payload_output=self.payload_output,
             statistics=self.timer.dump()
         )
-
