@@ -4,9 +4,23 @@ try:
     import queue
 except ImportError:
     import Queue as queue
+import json
+import yaml
 
 import boto3
+
+
+def jsonfmt(obj):
+    if isinstance(obj, str):
+        return obj
+    return json.dumps(obj, indent=4, separators=(',', ': '))
 from botocore.exceptions import ClientError
+
+
+def yamlfmt(obj):
+    if isinstance(obj, str):
+        return obj
+    return yaml.dump(obj, default_flow_style=False)
 
 
 def assume_role_in_account(account_id, role_name):
