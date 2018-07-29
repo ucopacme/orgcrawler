@@ -187,7 +187,13 @@ class OrgAccount(OrgObject):
 
     def __init__(self, *args):
         super(OrgAccount, self).__init__(*args)
+        self.credentials = {}
 
+    def load_credentials(self, access_role):
+        self.credentials = utils.assume_role_in_account(self.id, access_role)
+
+    def run_payload(region, payload, *args):
+        pass
 
 class OrganizationalUnit(OrgObject):
 

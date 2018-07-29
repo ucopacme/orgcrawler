@@ -364,7 +364,6 @@ def test_list_accounts_under_ou():
         assert re.compile(r'[0-9]{12}').match(account_id)
 
 
-
 @mock_sts
 @mock_organizations
 def test_org_dump():
