@@ -31,17 +31,15 @@ class Crawler(object):
     def execute(self, payload, *args, **kwargs):
         thread_count = kwargs.get('thread_count', len(self.accounts))
         request = CrawlerRequest(payload)
-        request.starttime = time.perf_counter()
+        request.timer.start()
         for region in self.regions:
             for account in self.accounts:
                 response = CrawlerResponse(region, account)
-                response.starttime = time.perf_counter()
+                response.timer.start()
                 response.payload_output = payload(region, account, *args)
-                response.endtime = time.perf_counter()
-                response.elapsedtime = response.endtime - response.starttime
+                response.timer.stop()
                 request.responses.append(response)
-        request.endtime = time.perf_counter()
-        request.elapsedtime = request.endtime - request.starttime
+        request.timer.stop()
         self.requests.append(request)
         
 
@@ -50,24 +48,43 @@ class Crawler(object):
             r for r in self.requests if r['Name'] == name), None)
 
 
+class CrawlerTimer(object):
+
+    def __init__(self):
+       self.start_time = None
+       self.end_time = None
+       self.elapsed_time = None
+
+    def start(self):
+        self.start_time = time.perf_counter()
+
+    def stop(self):
+        if self.start_time:
+            self.end_time = time.perf_counter()
+            self.elapsed_time = self.end_time - self.start_time
+
+    def dump(self):
+        return dict(
+            start_time=self.start_time,
+            end_time=self.end_time,
+            elapsed_time=self.elapsed_time,
+        )
+
+
 class CrawlerRequest(object):
 
     def __init__(self, payload):
-        self.payload = payload,
+        self.payload = payload
         self.name = payload.__name__
         self.responses = []
-        self.starttime = None
-        self.endtime = None
-        self.elapsedtime = None
+        self.timer = CrawlerTimer()
 
     def dump(self):
         return dict(
             payload=self.payload.__repr__(),
             name=self.name,
             responses=[r.dump() for r in self.responses],
-            starttime=self.starttime,
-            endtime=self.endtime,
-            elapsedtime=self.elapsedtime,
+            statistics=self.timer.dump()
         )
 
 
@@ -77,17 +94,13 @@ class CrawlerResponse(object):
         self.region = region
         self.account = account
         self.payload_output = None
-        self.starttime = None
-        self.endtime = None
-        self.elapsedtime = None
+        self.timer = CrawlerTimer()
 
     def dump(self):
         return dict(
             region=self.region,
             account=self.account.dump(),
             payload_output=self.payload_output,
-            starttime=self.starttime,
-            endtime=self.endtime,
-            elapsedtime=self.elapsedtime,
+            statistics=self.timer.dump()
         )
 
