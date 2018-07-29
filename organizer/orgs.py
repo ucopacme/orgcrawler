@@ -192,8 +192,6 @@ class OrgAccount(OrgObject):
     def load_credentials(self, access_role):
         self.credentials = utils.assume_role_in_account(self.id, access_role)
 
-    def run_payload(region, payload, *args):
-        pass
 
 class OrganizationalUnit(OrgObject):
 

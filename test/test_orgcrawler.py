@@ -4,9 +4,10 @@
 #import yaml
 #import json
 #import moto
-from moto import mock_organizations, mock_sts
+from moto import mock_organizations, mock_sts, mock_iam
 import pytest
 
+from payloads import set_account_alias, get_account_alias
 from organizer import orgcrawler, orgs
 from .test_orgs import (
     MASTER_ACCOUNT_ID,
@@ -55,5 +56,20 @@ def test_load_account_credentials():
     assert len(crawler.accounts) == len(org.accounts)
     for account in crawler.accounts:
         assert isinstance(account.credentials, dict)
+
+
+@mock_sts
+@mock_organizations
+@mock_iam
+def test_execute():
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
+    org.load()
+    crawler = orgcrawler.Crawler(org)
+    crawler.load_account_credentials()
+    crawler.execute(set_account_alias.main)
+    crawler.execute(get_account_alias.main)
+    print(crawler.responses)
+    assert False
 
     

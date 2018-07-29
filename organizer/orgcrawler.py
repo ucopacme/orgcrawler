@@ -28,9 +28,11 @@ class Crawler(object):
         )
 
     def execute(self, payload, *args, **kwargs):
-        thread_count = kwargs('thread_count', len(self.accounts))
+        thread_count = kwargs.get('thread_count', len(self.accounts))
         for region in self.regions:
             for account in self.accounts:
-                response = account.run_payload(region, payload, *args)
-                self.responses.append(response)
-
+                self.responses.append(dict(
+                    Region=region,
+                    AccountId=account.id,
+                    Response=payload(region, account, *args),
+                ))
