@@ -16,33 +16,6 @@ from .test_orgs import (
 )
 
 
-@mock_sts
-@mock_organizations
-def test_crawler_init():
-    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
-    org.load()
-    crawler = crawlers.Crawler(org)
-    assert isinstance(crawler, crawlers.Crawler)
-    assert isinstance(crawler.org, orgs.Org)
-    assert crawler.access_role == org.access_role
-    assert crawler.accounts == org.accounts
-    assert crawler.regions == [crawlers.DEFAULT_REGION]
-    
-    ou01_id = org.get_org_unit_id_by_name('ou01')
-    ou01_accounts = org.list_accounts_in_ou(ou01_id)
-    crawler = crawlers.Crawler(
-        org,
-        accounts=ou01_accounts,
-        regions=['us-west-2', 'us-east-1'],
-        access_role='OrganizerAdmin'
-    )
-    assert len(crawler.accounts) == len(ou01_accounts)
-    assert len(crawler.regions) == 2
-    assert crawler.access_role == 'OrganizerAdmin'
-    #assert False
-
-
 def test_crawler_timer_init():
     timer = crawlers.CrawlerTimer()
     timer.start()
@@ -102,6 +75,33 @@ def test_load_account_credentials():
         assert isinstance(account.credentials, dict)
 
 
+@mock_sts
+@mock_organizations
+def test_crawler_init():
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
+    org.load()
+    crawler = crawlers.Crawler(org)
+    assert isinstance(crawler, crawlers.Crawler)
+    assert isinstance(crawler.org, orgs.Org)
+    assert crawler.access_role == org.access_role
+    assert crawler.accounts == org.accounts
+    assert crawler.regions == [crawlers.DEFAULT_REGION]
+    
+    ou01_id = org.get_org_unit_id_by_name('ou01')
+    ou01_accounts = org.list_accounts_in_ou(ou01_id)
+    crawler = crawlers.Crawler(
+        org,
+        accounts=ou01_accounts,
+        regions=['us-west-2', 'us-east-1'],
+        access_role='OrganizerAdmin'
+    )
+    assert len(crawler.accounts) == len(ou01_accounts)
+    assert len(crawler.regions) == 2
+    assert crawler.access_role == 'OrganizerAdmin'
+    #assert False
+
+
 def set_account_alias(region, account):
     client = boto3.client('iam', region_name=region, **account.credentials)
     client.create_account_alias(AccountAlias='alias-' + account.name)
@@ -118,10 +118,6 @@ def get_account_alias(region, account):
 @mock_organizations
 @mock_iam
 def test_execute():
-    #request = crawlers.CrawlerRequest(['us-east-1', ' us-west-2'], org.accounts)
-    #assert isinstance(request.regions, list)
-    #assert isinstance(request.accounts, list)
-    #assert isinstance(request.accounts[0], orgs.OrgAccount)
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
     org.load()
@@ -129,11 +125,22 @@ def test_execute():
     crawler.load_account_credentials()
     crawler.execute(set_account_alias)
     crawler.execute(get_account_alias)
-    #print(crawler.requests)
-    #print(crawler.requests[0].responses[0].payload_output)
-    #print(crawler.requests[1].responses[0].payload_output)
-    print(utils.jsonfmt(crawler.requests[0].dump()))
-    print()
-    print(utils.jsonfmt(crawler.requests[1].dump()))
+    assert len(crawler.requests) == 2
+    for request in crawler.requests:
+        assert isinstance(request, crawlers.CrawlerRequest)
+        assert len(request.responses) == len(crawler.accounts)
+        for response in request.responses:
+            assert isinstance(response, crawlers.CrawlerResponse)
+    assert crawler.requests[0].name == 'set_account_alias'
+    assert crawler.requests[1].name == 'get_account_alias'
+    for response in crawler.requests[0].responses:
+        assert response.payload_output is None
+    for response in crawler.requests[1].responses:
+        assert isinstance(response.payload_output, list)
+        assert response.payload_output[0].startswith('alias-account')
+    #print(utils.jsonfmt(crawler.requests[0].dump()))
+    #print()
+    #print(utils.jsonfmt(crawler.requests[1].dump()))
+    #assert False
 
     

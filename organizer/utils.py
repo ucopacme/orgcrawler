@@ -8,15 +8,16 @@ import json
 import yaml
 
 import boto3
+from botocore.exceptions import ClientError
 
-
+# no test
 def jsonfmt(obj):
     if isinstance(obj, str):
         return obj
     return json.dumps(obj, indent=4, separators=(',', ': '))
-from botocore.exceptions import ClientError
 
 
+# no test
 def yamlfmt(obj):
     if isinstance(obj, str):
         return obj
