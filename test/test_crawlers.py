@@ -162,8 +162,10 @@ def test_execute():
     org.load()
     crawler = crawlers.Crawler(org)
     crawler.load_account_credentials()
-    crawler.execute(set_account_alias)
-    crawler.execute(get_account_alias)
+    request = crawler.execute(set_account_alias)
+    print(request.dump())
+    request = crawler.execute(get_account_alias)
+    print(request.dump())
     assert len(crawler.requests) == 2
     for request in crawler.requests:
         assert isinstance(request, crawlers.CrawlerRequest)
@@ -178,14 +180,14 @@ def test_execute():
         assert isinstance(response.payload_output, list)
         assert response.payload_output[0].startswith('alias-account')
 
-    #crawler.update_regions(utils.all_regions())
+    crawler.update_regions(utils.all_regions())
     crawler.execute(create_mock_bucket, 'mockbucket')
     crawler.execute(list_buckets)
     print(len(crawler.requests))
     print()
-    print(utils.jsonfmt(crawler.requests[2].dump()))
+    print(utils.jsonfmt(crawler.requests[2].timer.dump()))
     print()
-    print(utils.jsonfmt(crawler.requests[3].dump()))
-    #assert False
+    print(utils.jsonfmt(crawler.requests[3].timer.dump()))
+    assert False
 
     

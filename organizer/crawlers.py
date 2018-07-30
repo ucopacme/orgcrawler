@@ -42,20 +42,50 @@ class Crawler(object):
         )
 
     def execute(self, payload, *args, **kwargs):
-        # thread_count = kwargs.get('thread_count', len(self.accounts))
-        request = CrawlerRequest(payload)
-        request.timer.start()
+
+        def run_payload_in_account(account_region_map, request, *args):
+            region = account_region_map['region']
+            account = account_region_map['account']
+            response = CrawlerResponse(region, account)
+            response.timer.start()
+            response.payload_output = request.payload(region, account, *args)
+            response.timer.stop()
+            request.responses.append(response)
+
+        accounts_and_regions = []
         for region in self.regions:
             for account in self.accounts:
-                response = CrawlerResponse(region, account)
-                response.timer.start()
-                response.payload_output = request.payload(region, account, *args)
-                response.timer.stop()
-                request.responses.append(response)
+                accounts_and_regions.append(dict(account=account, region=region))
+        thread_count = kwargs.get('thread_count', len(self.accounts))
+        request = CrawlerRequest(payload)
+        request.timer.start()
+        utils.queue_threads(
+            accounts_and_regions,
+            run_payload_in_account,
+            func_args=(request, *args),
+            thread_count=thread_count,
+        )
         request.timer.stop()
         self.requests.append(request)
-        # NO TEST
         return request
+
+    # def execute_unthreaded(self, payload, *args, **kwargs):
+
+    #     def run_payload_in_account(account, region, request, *args):
+    #         response = CrawlerResponse(region, account)
+    #         response.timer.start()
+    #         response.payload_output = request.payload(region, account, *args)
+    #         response.timer.stop()
+    #         request.responses.append(response)
+
+    #     request = CrawlerRequest(payload)
+    #     request.timer.start()
+    #     for region in self.regions:
+    #         for account in self.accounts:
+    #             run_payload_in_account(region, request, *args)
+    #     request.timer.stop()
+    #     self.requests.append(request)
+    #     return request
 
     # NO TEST
     def get_request(self, name):
