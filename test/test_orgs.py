@@ -141,21 +141,33 @@ def test_org_objects():
     org._load_client()
     org._load_org()
 
-    org_object = orgs.OrgObject(org, 'generic')
+    org_object = orgs.OrgObject(org, name='generic')
     assert isinstance(org_object, orgs.OrgObject)
     assert org_object.organization_id == org.id
     assert org_object.master_account_id == org.master_account_id
     assert org_object.name == 'generic'
 
-    account = orgs.OrgAccount(org, 'account01', '112233445566', org.root_id)
+    account = orgs.OrgAccount(
+        org,
+        name='account01',
+        object_id='112233445566',
+        parent_id=org.root_id,
+        email='account01@example.org',
+    )
     assert isinstance(account, orgs.OrgAccount)
     assert account.organization_id == org.id
     assert account.master_account_id == org.master_account_id
     assert account.name == 'account01'
     assert account.id == '112233445566'
     assert account.parent_id == org.root_id
+    assert account.email == 'account01@example.org'
 
-    ou = orgs.OrganizationalUnit(org, 'production', 'o-jfk0', org.root_id)
+    ou = orgs.OrganizationalUnit(
+        org,
+        name='production',
+        object_id='o-jfk0',
+        parent_id=org.root_id,
+    )
     assert isinstance(ou, orgs.OrganizationalUnit)
     assert ou.organization_id == org.id
     assert ou.master_account_id == org.master_account_id
@@ -163,7 +175,7 @@ def test_org_objects():
     assert ou.id == 'o-jfk0'
     assert ou.parent_id == org.root_id
 
- 
+
 @mock_sts
 @mock_organizations
 def test_load_accounts():

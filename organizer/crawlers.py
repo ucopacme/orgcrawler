@@ -54,10 +54,12 @@ class Crawler(object):
                 request.responses.append(response)
         request.timer.stop()
         self.requests.append(request)
+        # NO TEST
+        return request
 
-    def get_request_by_name(self, name):
-        return next((
-            r for r in self.requests if r['Name'] == name), None)
+    # NO TEST
+    def get_request(self, name):
+        return next((r for r in self.requests if r.name == name), None)
 
 
 class CrawlerTimer(object):
