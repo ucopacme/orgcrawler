@@ -56,7 +56,6 @@ def get_master_account_id(role_name=None):
         sys.exit(e)
 
 
-# NO TEST YET
 def queue_threads(sequence, func, func_args=(), thread_count=20):
     """generalized abstraction for running queued tasks in a thread pool"""
     def worker(*args):
@@ -72,3 +71,14 @@ def queue_threads(sequence, func, func_args=(), thread_count=20):
         t.setDaemon(True)
         t.start()
     q.join()
+
+
+def regions_for_service(service_name):
+    s = boto3.session.Session()
+    if service_name not in s.get_available_services():
+        raise ValueError("'{}' is not a valid AWS service".format(service_name))
+    return s.get_available_regions(service_name)
+
+
+def all_regions():
+    return regions_for_service('ec2')

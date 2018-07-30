@@ -12,7 +12,6 @@ import boto3
 from docopt import docopt
 
 from organizer import crawlers, orgs, utils
-from organizer.utils import get_master_account_id
 
 
 def get_account_aliases(region, account):
@@ -22,9 +21,8 @@ def get_account_aliases(region, account):
 
 
 def main():
-    print(type(get_account_aliases.__name__))
     args = docopt(__doc__)
-    master_account_id = get_master_account_id(args['ROLE'])
+    master_account_id = utils.get_master_account_id(args['ROLE'])
     org = orgs.Org(master_account_id, args['ROLE'])
     org.load()
     crawler = crawlers.Crawler(org)

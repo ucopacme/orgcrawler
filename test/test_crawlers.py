@@ -3,8 +3,13 @@
 from inspect import isfunction
 import time
 import boto3
-from moto import mock_organizations, mock_sts, mock_iam
 import pytest
+from moto import (
+    mock_organizations,
+    mock_sts,
+    mock_iam,
+    mock_s3,
+)
 
 from organizer import crawlers, orgs, utils
 from .test_orgs import (
@@ -63,20 +68,6 @@ def test_crawler_request_init():
 
 @mock_sts
 @mock_organizations
-def test_load_account_credentials():
-    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
-    org.load()
-    crawler = crawlers.Crawler(org)
-    crawler.load_account_credentials()
-    assert isinstance(crawler.accounts, list)
-    assert len(crawler.accounts) == len(org.accounts)
-    for account in crawler.accounts:
-        assert isinstance(account.credentials, dict)
-
-
-@mock_sts
-@mock_organizations
 def test_crawler_init():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
@@ -102,6 +93,39 @@ def test_crawler_init():
     #assert False
 
 
+@mock_sts
+@mock_organizations
+def test_load_account_credentials():
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
+    org.load()
+    crawler = crawlers.Crawler(org)
+    crawler.load_account_credentials()
+    assert isinstance(crawler.accounts, list)
+    assert len(crawler.accounts) == len(org.accounts)
+    for account in crawler.accounts:
+        assert isinstance(account.credentials, dict)
+
+
+@mock_sts
+@mock_organizations
+@mock_iam
+def test_get_update_regions():
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
+    org.load()
+    crawler = crawlers.Crawler(org)
+    assert crawler.get_regions() == ['us-east-1']
+    crawler.update_regions(utils.regions_for_service('iam'))
+    assert crawler.get_regions() == ['us-east-1']
+    crawler.update_regions(utils.all_regions())
+    assert crawler.get_regions() == utils.all_regions()
+    crawler.update_regions(utils.regions_for_service('cloud9'))
+    assert crawler.get_regions() == utils.regions_for_service('cloud9')
+
+
+# payload functions:
+
 def set_account_alias(region, account):
     client = boto3.client('iam', region_name=region, **account.credentials)
     client.create_account_alias(AccountAlias='alias-' + account.name)
@@ -114,9 +138,24 @@ def get_account_alias(region, account):
     return response['AccountAliases']
 
 
+def create_mock_bucket(region, account, bucket_prefix):
+    client = boto3.client('s3', region_name=region, **account.credentials)
+    response = client.create_bucket(Bucket='-'.join([bucket_prefix, account.id]))
+    return response
+
+
+def list_buckets(region, account):
+    client = boto3.client('s3', region_name=region, **account.credentials)
+    response = client.list_buckets()
+    # ISSUE: json.dumps cant stream datetime objects
+    return [b['Name'] for b in response['Buckets']]
+
+
+
 @mock_sts
 @mock_organizations
 @mock_iam
+@mock_s3
 def test_execute():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
@@ -138,9 +177,15 @@ def test_execute():
     for response in crawler.requests[1].responses:
         assert isinstance(response.payload_output, list)
         assert response.payload_output[0].startswith('alias-account')
-    #print(utils.jsonfmt(crawler.requests[0].dump()))
-    #print()
-    #print(utils.jsonfmt(crawler.requests[1].dump()))
+
+    #crawler.update_regions(utils.all_regions())
+    crawler.execute(create_mock_bucket, 'mockbucket')
+    crawler.execute(list_buckets)
+    print(len(crawler.requests))
+    print()
+    print(utils.jsonfmt(crawler.requests[2].dump()))
+    print()
+    print(utils.jsonfmt(crawler.requests[3].dump()))
     #assert False
 
     

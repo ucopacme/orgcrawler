@@ -7,13 +7,29 @@ DEFAULT_REGION = 'us-east-1'
 
 
 class Crawler(object):
+    """
+    ISSUE: what if regions is an empty list?  this is likely in
+    case of a global service.  for example:
+    >>>> utils.regions_for_service('iam')
+    []
+    """
 
     def __init__(self, org, **kwargs):
         self.org = org
         self.access_role = kwargs.get('access_role', org.access_role)
         self.accounts = kwargs.get('accounts', org.accounts)
         self.regions = kwargs.get('regions', [DEFAULT_REGION])
+        if len(self.regions) == 0:
+            self.regions.append(DEFAULT_REGION)
         self.requests = []
+
+    def get_regions(self):
+        return self.regions
+
+    def update_regions(self, regions):
+        self.regions = regions
+        if len(self.regions) == 0:
+            self.regions.append(DEFAULT_REGION)
 
     def load_account_credentials(self):
         def get_credentials_for_account(account, crawler):
@@ -33,7 +49,7 @@ class Crawler(object):
             for account in self.accounts:
                 response = CrawlerResponse(region, account)
                 response.timer.start()
-                response.payload_output = payload(region, account, *args)
+                response.payload_output = request.payload(region, account, *args)
                 response.timer.stop()
                 request.responses.append(response)
         request.timer.stop()
