@@ -37,7 +37,7 @@ def list_hosted_zones(region, account):
     response = client.list_hosted_zones()
     hosted_zones = []
     for zone in response['HostedZones']:
-        response =  client.list_resource_record_sets(HostedZoneId=zone['Id'])
+        response = client.list_resource_record_sets(HostedZoneId=zone['Id'])
         hosted_zones.append(dict(
             Name=zone['Name'],
             Id=zone['Id'],

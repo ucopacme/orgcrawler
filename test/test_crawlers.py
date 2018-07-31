@@ -144,14 +144,6 @@ def create_mock_bucket(region, account, bucket_prefix):
     return response
 
 
-def list_buckets(region, account):
-    client = boto3.client('s3', region_name=region, **account.credentials)
-    response = client.list_buckets()
-    # ISSUE: json.dumps cant stream datetime objects
-    return [b['Name'] for b in response['Buckets']]
-
-
-
 @mock_sts
 @mock_organizations
 @mock_iam
@@ -162,11 +154,11 @@ def test_execute():
     org.load()
     crawler = crawlers.Crawler(org)
     crawler.load_account_credentials()
-    request = crawler.execute(set_account_alias)
-    print(request.dump())
-    request = crawler.execute(get_account_alias)
-    print(request.dump())
+    request1= crawler.execute(set_account_alias)
+    request2 = crawler.execute(get_account_alias)
     assert len(crawler.requests) == 2
+    assert request1 == crawler.requests[0]
+    assert request2 == crawler.requests[1]
     for request in crawler.requests:
         assert isinstance(request, crawlers.CrawlerRequest)
         assert len(request.responses) == len(crawler.accounts)
@@ -181,13 +173,14 @@ def test_execute():
         assert response.payload_output[0].startswith('alias-account')
 
     crawler.update_regions(utils.all_regions())
-    crawler.execute(create_mock_bucket, 'mockbucket')
-    crawler.execute(list_buckets)
-    print(len(crawler.requests))
-    print()
-    print(utils.jsonfmt(crawler.requests[2].timer.dump()))
-    print()
-    print(utils.jsonfmt(crawler.requests[3].timer.dump()))
-    assert False
+    request3 = crawler.execute(create_mock_bucket, 'mockbucket')
+    assert len(crawler.requests) == 3
+    assert len(request3.responses) == len(crawler.accounts) * len(crawler.regions)
+    for response in request3.responses:
+        assert response.payload_output['ResponseMetadata']['HTTPStatusCode'] == 200
+
+    assert crawler.get_request('set_account_alias') == crawler.requests[0]
+    assert crawler.get_request('get_account_alias') == crawler.requests[1]
+    assert crawler.get_request('create_mock_bucket') == crawler.requests[2]
 
     

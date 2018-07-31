@@ -7,12 +7,6 @@ DEFAULT_REGION = 'us-east-1'
 
 
 class Crawler(object):
-    """
-    ISSUE: what if regions is an empty list?  this is likely in
-    case of a global service.  for example:
-    >>>> utils.regions_for_service('iam')
-    []
-    """
 
     def __init__(self, org, **kwargs):
         self.org = org
@@ -69,27 +63,25 @@ class Crawler(object):
         self.requests.append(request)
         return request
 
-    # def execute_unthreaded(self, payload, *args, **kwargs):
-
-    #     def run_payload_in_account(account, region, request, *args):
-    #         response = CrawlerResponse(region, account)
-    #         response.timer.start()
-    #         response.payload_output = request.payload(region, account, *args)
-    #         response.timer.stop()
-    #         request.responses.append(response)
-
-    #     request = CrawlerRequest(payload)
-    #     request.timer.start()
-    #     for region in self.regions:
-    #         for account in self.accounts:
-    #             run_payload_in_account(region, request, *args)
-    #     request.timer.stop()
-    #     self.requests.append(request)
-    #     return request
-
-    # NO TEST
     def get_request(self, name):
         return next((r for r in self.requests if r.name == name), None)
+
+    def execute_unthreaded(self, payload, *args, **kwargs):
+        """This is here for comparison testing.  Should be deleted later."""
+        def run_payload_in_account(account, region, request, *args):
+            response = CrawlerResponse(region, account)
+            response.timer.start()
+            response.payload_output = request.payload(region, account, *args)
+            response.timer.stop()
+            request.responses.append(response)
+        request = CrawlerRequest(payload)
+        request.timer.start()
+        for region in self.regions:
+            for account in self.accounts:
+                run_payload_in_account(region, request, *args)
+        request.timer.stop()
+        self.requests.append(request)
+        return request
 
 
 class CrawlerTimer(object):
