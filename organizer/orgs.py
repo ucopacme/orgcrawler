@@ -15,11 +15,15 @@ class OrgObject(object):
         self.parent_id = kwargs.get('parent_id')
 
     def dump(self):
-        return dict(
-            Name=self.name,
-            Id=self.id,
-            ParentId=self.parent_id,
-        )
+        org_object_dump = dict()
+        org_object_dump.update(vars(self).items())
+        return org_object_dump
+
+
+class OrganizationalUnit(OrgObject):
+
+    def __init__(self, *args, **kwargs):
+        super(OrganizationalUnit, self).__init__(*args, **kwargs)
 
 
 class OrgAccount(OrgObject):
@@ -27,26 +31,16 @@ class OrgAccount(OrgObject):
     def __init__(self, *args, **kwargs):
         super(OrgAccount, self).__init__(*args, **kwargs)
         self.email = kwargs['email']
-        self.aliases = []
+        self.aliases = kwargs.get('aliases', [])
         self.credentials = {}
-
-    def dump(self):
-        return dict(
-            Name=self.name,
-            Id=self.id,
-            Email=self.email,
-            ParentId=self.parent_id,
-            Aliases=', '.join(self.aliases),
-        )
 
     def load_credentials(self, access_role):
         self.credentials = utils.assume_role_in_account(self.id, access_role)
 
-
-class OrganizationalUnit(OrgObject):
-
-    def __init__(self, *args, **kwargs):
-        super(OrganizationalUnit, self).__init__(*args, **kwargs)
+    def dump(self):
+        account_dump = super(OrgAccount, self).dump()
+        account_dump.update(dict(credentials={}))
+        return account_dump
 
 
 class Org(object):
@@ -72,16 +66,12 @@ class Org(object):
         self._load_org_units()
 
     def dump(self):
-        """
-        Return loaded Org object as dictionary
-        """
-        return dict(
-            Id=self.id,
-            MasterAccountId=self.master_account_id,
-            RootId=self.root_id,
-            Accounts=[a.dump() for a in self.accounts],
-            OrganizationalUnits=[ou.dump() for ou in self.org_units],
-        )
+        org_dump = dict()
+        org_dump.update(vars(self).items())
+        org_dump['accounts'] = [a.dump() for a in self.accounts]
+        org_dump['org_units'] = [ou.dump() for ou in self.org_units]
+        org_dump.pop('client')
+        return org_dump
 
     def dump_json(self):
         """

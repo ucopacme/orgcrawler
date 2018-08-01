@@ -1,12 +1,14 @@
 import re
+import json
+import pickle
+
+import yaml
 import botocore
 import boto3
-import yaml
-import json
 import moto
 from moto import mock_organizations, mock_sts
 
-from organizer import orgs
+from organizer import utils, orgs, crawlers
 
 ORG_ACCESS_ROLE='myrole'
 MASTER_ACCOUNT_ID='123456789012'
@@ -381,21 +383,41 @@ def test_list_accounts_under_ou():
 def test_org_dump():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
+    #org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
     org.load()
+    crawler = crawlers.Crawler(org)
+    crawler.load_account_credentials()
     dump = org.dump()
+    #print(dump)
+    print(utils.jsonfmt(dump))
     assert isinstance(dump, dict)
-    assert dump['Id']
-    assert dump['Id'].startswith('o-')
-    assert re.compile(r'[0-9]{12}').match(dump['MasterAccountId'])
-    assert dump['RootId'].startswith('r-')
-    for account in dump['Accounts']:
-        assert re.compile(r'[0-9]{12}').match(account['Id'])
-        assert account['Name'].startswith('account')
-        assert account['ParentId'].startswith(('r-', 'ou-'))
-    for ou in dump['OrganizationalUnits']:
-        assert ou['Id'].startswith('ou-')
-        assert ou['Name'].startswith('ou')
-        assert ou['ParentId'].startswith(('r-', 'ou-'))
+    assert dump['id']
+    assert dump['id'].startswith('o-')
+    assert re.compile(r'[0-9]{12}').match(dump['master_account_id'])
+    assert dump['root_id'].startswith('r-')
+    for account in dump['accounts']:
+        assert re.compile(r'[0-9]{12}').match(account['id'])
+        assert account['name'].startswith('account')
+        assert account['parent_id'].startswith(('r-', 'ou-'))
+    for ou in dump['org_units']:
+        assert ou['id'].startswith('ou-')
+        assert ou['name'].startswith('ou')
+        assert ou['parent_id'].startswith(('r-', 'ou-'))
     json_dump = org.dump_json()
     assert isinstance(json_dump, str)
     assert json.loads(json_dump) == dump
+    assert False
+
+
+
+@mock_sts
+@mock_organizations
+def test_org_pickle():
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
+    org.load()
+    #org.pickle()
+    #org.pickle.save()
+    #pickled_org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    #pickled_.pickle.load()
+    #assert org.dump() == pickled_org.dump()
