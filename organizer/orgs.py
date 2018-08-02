@@ -222,7 +222,6 @@ class Org(object):
     def get_org_unit_id_by_name(self, name):
         return next((ou.id for ou in self.org_units if ou.name == name), None)
 
-    # NO TEST
     def _check_if_org_unit_name(self, ou_id):
         if ou_id == 'root':
             return self.root_id

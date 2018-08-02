@@ -341,7 +341,7 @@ def test_get_account_id_by_name():
  
 @mock_sts
 @mock_organizations
-def test_get_account_id_by_name():
+def test_get_account_name_by_id():
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org.load()
@@ -366,6 +366,19 @@ def test_get_org_unit_id_by_name():
     assert ou_id == next((
         ou['Id'] for ou in ou_by_boto_client if ou['Name'] == 'ou02'
     ), None)
+    clean_up()
+
+ 
+@mock_sts
+@mock_organizations
+def test__check_if_org_unit_name():
+    org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org.load()
+    ou = org.org_units[0]
+    assert org._check_if_org_unit_name(ou.id) == ou.id
+    assert org._check_if_org_unit_name(ou.name) == ou.id
+    assert org._check_if_org_unit_name('root') == org.root_id
     clean_up()
 
  
