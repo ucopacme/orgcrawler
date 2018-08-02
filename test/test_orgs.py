@@ -1,10 +1,14 @@
+import os
 import re
+import time
 import json
 import pickle
+import shutil
 
 import yaml
 import botocore
 import boto3
+import pytest
 import moto
 from moto import mock_organizations, mock_sts
 
@@ -100,6 +104,10 @@ def build_mock_org(spec):
     mock_org_from_spec(client, root_id, root_id, yaml.load(spec)['root'])
     return (org_id, root_id)
 
+def clean_up():
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    if os.path.isdir(org.organizer_dir):
+        shutil.rmtree(org.organizer_dir)
 
 @mock_organizations
 def test_org():
@@ -133,7 +141,7 @@ def test_load_org():
     org._load_org()
     assert org.id is not None
     assert org.root_id is not None
- 
+
 @mock_sts
 @mock_organizations
 def test_org_objects():
@@ -152,7 +160,7 @@ def test_org_objects():
     account = orgs.OrgAccount(
         org,
         name='account01',
-        object_id='112233445566',
+        id='112233445566',
         parent_id=org.root_id,
         email='account01@example.org',
     )
@@ -167,7 +175,7 @@ def test_org_objects():
     ou = orgs.OrganizationalUnit(
         org,
         name='production',
-        object_id='o-jfk0',
+        id='o-jfk0',
         parent_id=org.root_id,
     )
     assert isinstance(ou, orgs.OrganizationalUnit)
@@ -203,24 +211,67 @@ def test_load_org_units():
     for ou in org.org_units:
         assert isinstance(ou, orgs.OrganizationalUnit)
 
- 
+@mock_sts
+@mock_organizations
+def test_org_pickle_from_file():
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
+    org._load_client()
+    org._load_org()
+    org._load_accounts()
+    org._load_org_units()
+
+    org._dump_org_pickle()
+    assert os.path.exists(org.pickle_file)
+
+    os.remove(org.pickle_file)
+    with pytest.raises(RuntimeError) as e:
+        loaded_dump = org._load_org_pickle_from_file()
+    assert str(e.value) == 'Pickle file not found'
+
+    org._dump_org_pickle()
+    timestamp = os.path.getmtime(org.pickle_file) - 3600
+    os.utime(org.pickle_file,(timestamp,timestamp))
+    with pytest.raises(RuntimeError) as e:
+        loaded_dump = org._load_org_pickle_from_file()
+    assert str(e.value) == 'Pickle file too old'
+
+    org._dump_org_pickle()
+    org_dump = org.dump()
+    loaded_dump = org._load_org_pickle_from_file()
+    assert loaded_dump == org_dump
+
+    org_from_pickle_file = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org_from_pickle_file._load_org_dump(loaded_dump)
+    org.client = None
+    assert org.dump() == org_from_pickle_file.dump()
+
 @mock_sts
 @mock_organizations
 def test_load():
-    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    clean_up()
+    assert not os.path.exists(org.organizer_dir)
+    assert not os.path.exists(org.pickle_file)
     org.load()
+    print(org.pickle_file)
+    assert os.path.exists(org.pickle_file)
     assert org.id == org_id
     assert org.root_id == root_id
     assert len(org.accounts) == 3
     assert len(org.org_units) == 6
 
+    org_from_pickle_file = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org_from_pickle_file.load()
+    assert org.dump() == org_from_pickle_file.dump()
+
  
 @mock_sts
 @mock_organizations
 def test_list_accounts():
-    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org.load()
 
     response = org.list_accounts()
@@ -243,12 +294,11 @@ def test_list_accounts():
     for account_id in response:
         assert re.compile(r'[0-9]{12}').match(account_id)
 
- 
 @mock_sts
 @mock_organizations
 def test_list_org_units():
-    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org.load()
 
     response = org.list_org_units()
@@ -275,8 +325,8 @@ def test_list_org_units():
 @mock_sts
 @mock_organizations
 def test_get_account_id_by_name():
-    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org.load()
     account_id = org.get_account_id_by_name('account01')
     accounts_by_boto_client = org.client.list_accounts()['Accounts']
@@ -288,8 +338,8 @@ def test_get_account_id_by_name():
 @mock_sts
 @mock_organizations
 def test_get_account_id_by_name():
-    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org.load()
     account_id = org.get_account_id_by_name('account01')
     account_name = org.get_account_name_by_id(account_id)
@@ -302,8 +352,8 @@ def test_get_account_id_by_name():
 @mock_sts
 @mock_organizations
 def test_get_org_unit_id_by_name():
-    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org.load()
     ou_id = org.get_org_unit_id_by_name('ou02')
     ou_by_boto_client = org.client.list_organizational_units_for_parent(
@@ -316,8 +366,8 @@ def test_get_org_unit_id_by_name():
 @mock_sts
 @mock_organizations
 def test_list_accounts_in_ou():
-    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org.load()
     ou_id = org.get_org_unit_id_by_name('ou02')
 
@@ -341,8 +391,8 @@ def test_list_accounts_in_ou():
 @mock_sts
 @mock_organizations
 def test_list_accounts_under_ou():
-    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org.load()
     ou02_id = org.get_org_unit_id_by_name('ou02')
     ou02_1_id = org.get_org_unit_id_by_name('ou02-1')
@@ -381,15 +431,12 @@ def test_list_accounts_under_ou():
 @mock_sts
 @mock_organizations
 def test_org_dump():
-    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
-    #org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org.load()
     crawler = crawlers.Crawler(org)
     crawler.load_account_credentials()
     dump = org.dump()
-    #print(dump)
-    print(utils.jsonfmt(dump))
     assert isinstance(dump, dict)
     assert dump['id']
     assert dump['id'].startswith('o-')
@@ -406,18 +453,4 @@ def test_org_dump():
     json_dump = org.dump_json()
     assert isinstance(json_dump, str)
     assert json.loads(json_dump) == dump
-    assert False
-
-
-
-@mock_sts
-@mock_organizations
-def test_org_pickle():
-    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
-    org.load()
-    #org.pickle()
-    #org.pickle.save()
-    #pickled_org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    #pickled_.pickle.load()
-    #assert org.dump() == pickled_org.dump()
+    clean_up()

@@ -1,4 +1,8 @@
+import os
+import pickle
 import json
+from datetime import datetime, timedelta
+
 import boto3
 from botocore.exceptions import ClientError
 
@@ -11,7 +15,7 @@ class OrgObject(object):
         self.organization_id = organization.id
         self.master_account_id = organization.master_account_id
         self.name = kwargs['name']
-        self.id = kwargs.get('object_id')
+        self.id = kwargs.get('id')
         self.parent_id = kwargs.get('parent_id')
 
     def dump(self):
@@ -45,32 +49,29 @@ class OrgAccount(OrgObject):
 
 class Org(object):
 
-    def __init__(self, master_account_id, org_access_role):
+    def __init__(self, master_account_id, org_access_role, **kwargs):
         self.master_account_id = master_account_id
         self.access_role = org_access_role
         self.id = None
         self.root_id = None
+        self.client = None
+        self.organizer_dir = os.path.expanduser(
+            kwargs.get('organizer_dir', '~/.aws/organizer-cache')
+        )
+        self.pickle_file = os.path.join(
+            self.organizer_dir,
+            kwargs.get('pickle_file', 'org_pickle')
+        )
+        self.pickle_file_max_age = kwargs.get('pickle_file_max_age', 60)
         self.accounts = []
         self.org_units = []
-
-    def load(self):
-        """
-        Make boto3 client calls to populate the Org object's Account and
-        OrganizationalUnit resource data
-        """
-        self._load_client()
-        self._load_org()
-        self.accounts = []
-        self._load_accounts()
-        self.org_units = []
-        self._load_org_units()
 
     def dump(self):
         org_dump = dict()
         org_dump.update(vars(self).items())
         org_dump['accounts'] = [a.dump() for a in self.accounts]
         org_dump['org_units'] = [ou.dump() for ou in self.org_units]
-        org_dump.pop('client')
+        org_dump.update(dict(client=None))
         return org_dump
 
     def dump_json(self):
@@ -79,8 +80,52 @@ class Org(object):
         """
         return json.dumps(self.dump(), indent=4, separators=(',', ': '))
 
+    def _dump_org_pickle(self):
+        os.makedirs(self.organizer_dir, 0o700, exist_ok=True)
+        with open(self.pickle_file, 'wb') as pf:
+            pickle.dump(self.dump(), pf)
+
+    def load(self):
+        """
+        Make boto3 client calls to populate the Org object's Account and
+        OrganizationalUnit resource data
+        """
+        self._load_client()
+        try:
+            org_dump = self._load_org_pickle_from_file()
+            self._load_org_dump(org_dump)
+        except RuntimeError:
+            self._load_org()
+            self.pickle_file = '-'.join([self.pickle_file, self.id])
+            self.accounts = []
+            self._load_accounts()
+            self.org_units = []
+            self._load_org_units()
+            self._dump_org_pickle()
+
     def _load_client(self):
         self.client = self.get_org_client()
+
+    def _load_org_pickle_from_file(self):
+        if not os.path.isfile(self.pickle_file):
+            raise RuntimeError('Pickle file not found')
+        pickle_file_mod_time = datetime.fromtimestamp(os.stat(self.pickle_file).st_mtime)
+        now = datetime.today()
+        max_delay = timedelta(minutes=self.pickle_file_max_age)
+        if now - pickle_file_mod_time > max_delay:
+            raise RuntimeError('Pickle file too old')
+        with open(self.pickle_file, 'rb') as pf:
+            return pickle.load(pf)
+
+    def _load_org_dump(self, org_dump):
+        self.id = org_dump['id']
+        self.root_id = org_dump['root_id']
+        self.accounts = [
+            OrgAccount(self, **account) for account in org_dump['accounts']
+        ]
+        self.org_units = [
+            OrganizationalUnit(self, **org_unit) for org_unit in org_dump['org_units']
+        ]
 
     def _load_org(self):
         response = self.client.describe_organization()
@@ -108,7 +153,7 @@ class Org(object):
             org_account = OrgAccount(
                 org,
                 name=account['Name'],
-                object_id=account['Id'],
+                id=account['Id'],
                 email=account['Email'],
                 parent_id=parent_id,
             )
@@ -137,7 +182,7 @@ class Org(object):
                 OrganizationalUnit(
                     self,
                     name=ou['Name'],
-                    object_id=ou['Id'],
+                    id=ou['Id'],
                     parent_id=parent_id,
                 )
             )

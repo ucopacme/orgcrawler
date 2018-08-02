@@ -2,11 +2,11 @@ import re
 import time
 import json
 import yaml
+import pytest
 
 import boto3
 from botocore.exceptions import ClientError
 from moto import mock_sts, mock_organizations
-import pytest
 
 from organizer import utils
 from .test_orgs import SIMPLE_ORG_SPEC
@@ -70,7 +70,7 @@ def test_regions_for_service():
     assert 'us-east-1' in regions
     regions = utils.regions_for_service('iam')
     assert regions ==  []
-    with pytest.raises(Exception) as e:
+    with pytest.raises(Exception):
         regions = utils.regions_for_service('blee')
     all_regions = utils.all_regions()
     assert all_regions == utils.regions_for_service('ec2')
