@@ -5,16 +5,17 @@ Script for querying AWS Organization resources
 
 Usage:
     organizer [-h]
-    organizer [-f FORMAT] ROLE COMMAND [ARGUMENT]
+    organizer [-f format] [-m master_account_id] -r role COMMAND [ARGUMENT]
 
 Arguments:
-    ROLE        The AWS role name to assume when running organizer
     COMMAND     An organizer query command to run
     ARGUMENT    A command argument to supply if needed
 
 Options:
     -h, --help              Print help message
-    -f, --format FORMAT     Output format:  "json" or "yaml". [Default: json]
+    -f format               Output format:  "json" or "yaml". [Default: json]
+    -m master_account_id    The master account id for the organization
+    -r role                 The AWS role name to assume when running organizer
 
 Available Query Commands:
     dump
@@ -77,16 +78,20 @@ def main():
     if args['COMMAND'] in _COMMANDS_WITH_ARG and not args['ARGUMENT']:
         print('ERROR: Query command "{}" requires an argument'.format(args['COMMAND']))
         sys.exit(__doc__)
-    if args['--format'] == 'json':
+    if args['-f'] == 'json':
         formatter = utils.jsonfmt
-    elif args['--format'] == 'yaml':
+    elif args['-f'] == 'yaml':
         formatter = utils.yamlfmt
     else:
         print('ERROR: Print format must be either "json" or "yaml"')
         sys.exit(__doc__)
 
-    master_account_id = get_master_account_id(args['ROLE'])
-    org = orgs.Org(master_account_id, args['ROLE'])
+    if args['-m'] is None:
+        master_account_id = get_master_account_id(args['-r'])
+    else:
+        master_account_id = args['-m']
+
+    org = orgs.Org(master_account_id, args['-r'])
     org.load()
     cmd = eval('org.' + args['COMMAND'])
     if args['ARGUMENT']:

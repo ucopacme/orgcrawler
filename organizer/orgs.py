@@ -60,7 +60,7 @@ class Org(object):
         )
         self.pickle_file = os.path.join(
             self.organizer_dir,
-            kwargs.get('pickle_file', 'org_pickle')
+            kwargs.get('pickle_file', '-'.join(['pickle_file', master_account_id])),
         )
         self.pickle_file_max_age = kwargs.get('pickle_file_max_age', 60)
         self.accounts = []
@@ -94,9 +94,8 @@ class Org(object):
         try:
             org_dump = self._load_org_pickle_from_file()
             self._load_org_dump(org_dump)
-        except RuntimeError:
+        except RuntimeError as e:
             self._load_org()
-            self.pickle_file = '-'.join([self.pickle_file, self.id])
             self.accounts = []
             self._load_accounts()
             self.org_units = []
@@ -223,13 +222,24 @@ class Org(object):
     def get_org_unit_id_by_name(self, name):
         return next((ou.id for ou in self.org_units if ou.name == name), None)
 
+    # NO TEST
+    def _check_if_org_unit_name(self, ou_id):
+        if ou_id == 'root':
+            return self.root_id
+        elif ou_id in self.list_org_units_by_name():
+            return self.get_org_unit_id_by_name(ou_id)
+        return ou_id
+
     def list_accounts_in_ou(self, ou_id):
+        ou_id = self._check_if_org_unit_name(ou_id)
         return [dict(Name=a.name, Id=a.id) for a in self.accounts if a.parent_id == ou_id]
 
     def list_accounts_in_ou_by_name(self, ou_id):
+        ou_id = self._check_if_org_unit_name(ou_id)
         return [a.name for a in self.accounts if a.parent_id == ou_id]
 
     def list_accounts_in_ou_by_id(self, ou_id):
+        ou_id = self._check_if_org_unit_name(ou_id)
         return [a.id for a in self.accounts if a.parent_id == ou_id]
 
     def _recurse_org_units_under_ou(self, parent_id):
@@ -242,15 +252,18 @@ class Org(object):
         return ou_id_list
 
     def list_accounts_under_ou(self, ou_id):
+        ou_id = self._check_if_org_unit_name(ou_id)
         account_list = self.list_accounts_in_ou(ou_id)
         for ou_id in self._recurse_org_units_under_ou(ou_id):
             account_list += self.list_accounts_in_ou(ou_id)
         return account_list
 
     def list_accounts_under_ou_by_name(self, ou_id):
+        ou_id = self._check_if_org_unit_name(ou_id)
         response = self.list_accounts_under_ou(ou_id)
         return [a['Name'] for a in response]
 
     def list_accounts_under_ou_by_id(self, ou_id):
+        ou_id = self._check_if_org_unit_name(ou_id)
         response = self.list_accounts_under_ou(ou_id)
         return [a['Id'] for a in response]

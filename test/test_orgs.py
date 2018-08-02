@@ -265,6 +265,7 @@ def test_load():
     org_from_pickle_file = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org_from_pickle_file.load()
     assert org.dump() == org_from_pickle_file.dump()
+    clean_up()
 
  
 @mock_sts
@@ -293,6 +294,7 @@ def test_list_accounts():
     assert len(response) == 3
     for account_id in response:
         assert re.compile(r'[0-9]{12}').match(account_id)
+    clean_up()
 
 @mock_sts
 @mock_organizations
@@ -320,6 +322,7 @@ def test_list_org_units():
     assert len(response) == 6
     for ou_id in response:
         assert ou_id.startswith('ou-')
+    clean_up()
 
  
 @mock_sts
@@ -333,6 +336,7 @@ def test_get_account_id_by_name():
     assert account_id == next((
         a['Id'] for a in accounts_by_boto_client if a['Name'] == 'account01'
     ), None)
+    clean_up()
 
  
 @mock_sts
@@ -347,6 +351,7 @@ def test_get_account_id_by_name():
     assert account_name == next((
         a['Name'] for a in accounts_by_boto_client if a['Id'] == account_id
     ), None)
+    clean_up()
 
  
 @mock_sts
@@ -361,6 +366,7 @@ def test_get_org_unit_id_by_name():
     assert ou_id == next((
         ou['Id'] for ou in ou_by_boto_client if ou['Name'] == 'ou02'
     ), None)
+    clean_up()
 
  
 @mock_sts
@@ -386,6 +392,7 @@ def test_list_accounts_in_ou():
 
     response = org.list_accounts_in_ou_by_id(ou_id)
     assert sorted(response) == sorted([a['Id'] for a in accounts_by_boto_client])
+    clean_up()
 
  
 @mock_sts
@@ -426,6 +433,7 @@ def test_list_accounts_under_ou():
     assert len(response) == 5
     for account_id in response:
         assert re.compile(r'[0-9]{12}').match(account_id)
+    clean_up()
 
 
 @mock_sts
