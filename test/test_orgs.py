@@ -97,7 +97,7 @@ def mock_org_from_spec(client, root_id, parent_id, spec):
 
 def build_mock_org(spec):
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    client = org.get_org_client()
+    client = org._get_org_client()
     client.create_organization(FeatureSet='ALL')
     org_id = client.describe_organization()['Organization']['Id']
     root_id = client.list_roots()['Roots'][0]['Id']
@@ -106,8 +106,8 @@ def build_mock_org(spec):
 
 def clean_up():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    if os.path.isdir(org.organizer_dir):
-        shutil.rmtree(org.organizer_dir)
+    if os.path.isdir(org.cache_dir):
+        shutil.rmtree(org.cache_dir)
 
 @mock_organizations
 def test_org():
@@ -119,9 +119,9 @@ def test_org():
 
 @mock_sts
 @mock_organizations
-def test_get_org_client():
+def test__get_org_client():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    client = org.get_org_client()
+    client = org._get_org_client()
     assert str(type(client)).find('botocore.client.Organizations') > 0
 
 @mock_sts
@@ -135,7 +135,7 @@ def test_load_client():
 @mock_organizations
 def test_load_org():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    client = org.get_org_client()
+    client = org._get_org_client()
     client.create_organization(FeatureSet='ALL')
     org._load_client()
     org._load_org()
@@ -146,7 +146,7 @@ def test_load_org():
 @mock_organizations
 def test_org_objects():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    client = org.get_org_client()
+    client = org._get_org_client()
     client.create_organization(FeatureSet='ALL')
     org._load_client()
     org._load_org()
@@ -213,7 +213,7 @@ def test_load_org_units():
 
 @mock_sts
 @mock_organizations
-def test_org_pickle_from_file():
+def test_org_cache():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
     org._load_client()
@@ -221,24 +221,24 @@ def test_org_pickle_from_file():
     org._load_accounts()
     org._load_org_units()
 
-    org._dump_org_pickle()
-    assert os.path.exists(org.pickle_file)
+    org._save_cached_org_to_file()
+    assert os.path.exists(org.cache_file)
 
-    os.remove(org.pickle_file)
+    os.remove(org.cache_file)
     with pytest.raises(RuntimeError) as e:
-        loaded_dump = org._load_org_pickle_from_file()
-    assert str(e.value) == 'Pickle file not found'
+        loaded_dump = org._get_cached_org_from_file()
+    assert str(e.value) == 'Cache file not found'
 
-    org._dump_org_pickle()
-    timestamp = os.path.getmtime(org.pickle_file) - 3600
-    os.utime(org.pickle_file,(timestamp,timestamp))
+    org._save_cached_org_to_file()
+    timestamp = os.path.getmtime(org.cache_file) - 3600
+    os.utime(org.cache_file,(timestamp,timestamp))
     with pytest.raises(RuntimeError) as e:
-        loaded_dump = org._load_org_pickle_from_file()
-    assert str(e.value) == 'Pickle file too old'
+        loaded_dump = org._get_cached_org_from_file()
+    assert str(e.value) == 'Cache file too old'
 
-    org._dump_org_pickle()
+    org._save_cached_org_to_file()
     org_dump = org.dump()
-    loaded_dump = org._load_org_pickle_from_file()
+    loaded_dump = org._get_cached_org_from_file()
     assert loaded_dump == org_dump
 
     org_from_pickle_file = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
@@ -252,11 +252,11 @@ def test_load():
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     clean_up()
-    assert not os.path.exists(org.organizer_dir)
-    assert not os.path.exists(org.pickle_file)
+    assert not os.path.exists(org.cache_dir)
+    assert not os.path.exists(org.cache_file)
     org.load()
-    print(org.pickle_file)
-    assert os.path.exists(org.pickle_file)
+    print(org.cache_file)
+    assert os.path.exists(org.cache_file)
     assert org.id == org_id
     assert org.root_id == root_id
     assert len(org.accounts) == 3

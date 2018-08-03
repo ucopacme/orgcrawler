@@ -55,14 +55,14 @@ class Org(object):
         self.id = None
         self.root_id = None
         self.client = None
-        self.organizer_dir = os.path.expanduser(
-            kwargs.get('organizer_dir', '~/.aws/organizer-cache')
+        self.cache_dir = os.path.expanduser(
+            kwargs.get('cache_dir', '~/.aws/organizer-cache')
         )
-        self.pickle_file = os.path.join(
-            self.organizer_dir,
-            kwargs.get('pickle_file', '-'.join(['pickle_file', master_account_id])),
+        self.cache_file = os.path.join(
+            self.cache_dir,
+            kwargs.get('cache_file', '-'.join(['cache_file', master_account_id])),
         )
-        self.pickle_file_max_age = kwargs.get('pickle_file_max_age', 60)
+        self.cache_file_max_age = kwargs.get('cache_file_max_age', 60)
         self.accounts = []
         self.org_units = []
 
@@ -80,11 +80,6 @@ class Org(object):
         """
         return json.dumps(self.dump(), indent=4, separators=(',', ': '))
 
-    def _dump_org_pickle(self):
-        os.makedirs(self.organizer_dir, 0o700, exist_ok=True)
-        with open(self.pickle_file, 'wb') as pf:
-            pickle.dump(self.dump(), pf)
-
     def load(self):
         """
         Make boto3 client calls to populate the Org object's Account and
@@ -92,7 +87,7 @@ class Org(object):
         """
         self._load_client()
         try:
-            org_dump = self._load_org_pickle_from_file()
+            org_dump = self._get_cached_org_from_file()
             self._load_org_dump(org_dump)
         except RuntimeError as e:
             self._load_org()
@@ -100,20 +95,28 @@ class Org(object):
             self._load_accounts()
             self.org_units = []
             self._load_org_units()
-            self._dump_org_pickle()
+            self._save_cached_org_to_file()
 
     def _load_client(self):
-        self.client = self.get_org_client()
+        self.client = self._get_org_client()
 
-    def _load_org_pickle_from_file(self):
-        if not os.path.isfile(self.pickle_file):
-            raise RuntimeError('Pickle file not found')
-        pickle_file_mod_time = datetime.fromtimestamp(os.stat(self.pickle_file).st_mtime)
+    def _get_org_client(self):
+        """ Returns a boto3 client for Organizations object """
+        credentials = utils.assume_role_in_account(
+            self.master_account_id,
+            self.access_role
+        )
+        return boto3.client('organizations', **credentials)
+
+    def _get_cached_org_from_file(self):
+        if not os.path.isfile(self.cache_file):
+            raise RuntimeError('Cache file not found')
+        cache_file_mod_time = datetime.fromtimestamp(os.stat(self.cache_file).st_mtime)
         now = datetime.today()
-        max_delay = timedelta(minutes=self.pickle_file_max_age)
-        if now - pickle_file_mod_time > max_delay:
-            raise RuntimeError('Pickle file too old')
-        with open(self.pickle_file, 'rb') as pf:
+        max_delay = timedelta(minutes=self.cache_file_max_age)
+        if now - cache_file_mod_time > max_delay:
+            raise RuntimeError('Cache file too old')
+        with open(self.cache_file, 'rb') as pf:
             return pickle.load(pf)
 
     def _load_org_dump(self, org_dump):
@@ -187,13 +190,12 @@ class Org(object):
             )
             self._recurse_organization(ou['Id'])
 
-    def get_org_client(self):
-        """ Returns a boto3 client for Organizations object """
-        credentials = utils.assume_role_in_account(
-            self.master_account_id,
-            self.access_role
-        )
-        return boto3.client('organizations', **credentials)
+    def _save_cached_org_to_file(self):
+        os.makedirs(self.cache_dir, 0o700, exist_ok=True)
+        with open(self.cache_file, 'wb') as pf:
+            pickle.dump(self.dump(), pf)
+
+    # Query methods
 
     def list_accounts(self):
         return [dict(Name=a.name, Id=a.id) for a in self.accounts]
