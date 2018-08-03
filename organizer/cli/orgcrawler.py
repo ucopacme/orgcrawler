@@ -67,7 +67,6 @@ def process_request_outputs(request):
 def main():
     args = docopt(__doc__)
     crawler = initialize_crawler(args['ROLE'])
-    print(crawler)
     request = crawler.execute(eval(args['PAYLOAD']))
     print(process_request_outputs(request))
 
