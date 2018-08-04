@@ -233,7 +233,7 @@ class Org(object):
 
     def list_accounts_in_ou(self, ou_id):
         ou_id = self._check_if_org_unit_name(ou_id)
-        return [dict(Name=a.name, Id=a.id) for a in self.accounts if a.parent_id == ou_id]
+        return [a for a in self.accounts if a.parent_id == ou_id]
 
     def list_accounts_in_ou_by_name(self, ou_id):
         ou_id = self._check_if_org_unit_name(ou_id)

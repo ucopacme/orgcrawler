@@ -41,8 +41,8 @@ setup(
     packages=find_packages(
         '.',
         exclude=[
-            'test',
             'bin',
+            'test',
         ],
     ),
     include_package_data=True,
