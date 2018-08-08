@@ -232,11 +232,15 @@ class Org(object):
     def dump_org_units(self):
         return [ou.dump() for ou in self.org_units]
 
-    def list_org_units_by_name(self):
-        return [ou.name for ou in self.org_units]
+    def list_org_units_by_name(self, ou_list=None):
+        if not ou_list:
+            ou_list = self.org_units
+        return [ou.name for ou in ou_list]
 
-    def list_org_units_by_id(self):
-        return [ou.id for ou in self.org_units]
+    def list_org_units_by_id(self, ou_list=None):
+        if not ou_list:
+            ou_list = self.org_units
+        return [ou.id for ou in ou_list]
 
     def get_org_unit_id(self, identifier):
         # ISSUE: should self.org_units contain the root ou?
@@ -253,44 +257,42 @@ class Org(object):
 
     def list_accounts_in_ou(self, ou):
         ou_id = self.get_org_unit_id(ou)
-        print(ou_id)
         return [a for a in self.accounts if a.parent_id == ou_id]
 
-    # GONE
-    def list_accounts_in_ou_by_name(self, ou):
+    def list_org_units_in_ou(self, ou):
         ou_id = self.get_org_unit_id(ou)
-        return [a.name for a in self.accounts if a.parent_id == ou_id]
+        return [ou for ou in self.org_units if ou.parent_id == ou_id]
 
-    # GONE
-    def list_accounts_in_ou_by_id(self, ou):
-        ou_id = self.get_org_unit_id(ou)
-        return [a.id for a in self.accounts if a.parent_id == ou_id]
-
-    # NEEDS RENAME
-    def _recurse_org_units_under_ou(self, parent_id):
-        ou_id_list = [
-            ou.id for ou in self.org_units
-            if ou.parent_id == parent_id
-        ]
-        for ou_id in ou_id_list:
-            ou_id_list += self._recurse_org_units_under_ou(ou_id)
-        return ou_id_list
+    def list_org_units_in_ou_recursive(self, ou):
+        ou_list = self.list_org_units_in_ou(ou)
+        for ou in ou_list:
+            ou_list += self.list_org_units_in_ou_recursive(ou)
+        return ou_list
 
     def list_accounts_in_ou_recursive(self, ou):
-        ou_id = self.get_org_unit_id(ou)
-        account_list = self.list_accounts_in_ou(ou_id)
-        for ou_id in self._recurse_org_units_under_ou(ou_id):
-            account_list += self.list_accounts_in_ou(ou_id)
+        account_list = self.list_accounts_in_ou(ou)
+        for ou in self.list_org_units_in_ou_recursive(ou):
+            account_list += self.list_accounts_in_ou(ou)
         return account_list
 
-    # GONE
-    def list_accounts_in_ou_recursive_by_name(self, ou):
-        ou_id = self.get_org_unit_id(ou)
-        response = self.list_accounts_in_ou_recursive(ou_id)
-        return [a.name for a in response]
+    # # GONE?
+    # def list_accounts_in_ou_by_name(self, ou):
+    #     ou_id = self.get_org_unit_id(ou)
+    #     return [a.name for a in self.accounts if a.parent_id == ou_id]
 
-    # GONE
-    def list_accounts_in_ou_recursive_by_id(self, ou):
-        ou_id = self.get_org_unit_id(ou)
-        response = self.list_accounts_in_ou_recursive(ou_id)
-        return [a.id for a in response]
+    # # GONE?
+    # def list_accounts_in_ou_by_id(self, ou):
+    #     ou_id = self.get_org_unit_id(ou)
+    #     return [a.id for a in self.accounts if a.parent_id == ou_id]
+
+    # # GONE
+    # def list_accounts_in_ou_recursive_by_name(self, ou):
+    #     ou_id = self.get_org_unit_id(ou)
+    #     response = self.list_accounts_in_ou_recursive(ou_id)
+    #     return [a.name for a in response]
+
+    # # GONE
+    # def list_accounts_in_ou_recursive_by_id(self, ou):
+    #     ou_id = self.get_org_unit_id(ou)
+    #     response = self.list_accounts_in_ou_recursive(ou_id)
+    #     return [a.id for a in response]

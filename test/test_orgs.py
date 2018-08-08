@@ -398,73 +398,97 @@ def test_list_accounts_in_ou():
     org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org.load()
-    org_units = org.dump_org_units()
-    #print(org_units)
-    org_accounts = org.dump_accounts()
-    #print(org_accounts)
 
-    #ou_id = org.get_org_unit_id('ou02')
-    #print(root_id)
     response = org.list_accounts_in_ou(root_id)
-    #print(response)
     accounts_by_boto_client = org.client.list_accounts_for_parent(
         ParentId=root_id
-        #ParentId=ou_id
     )['Accounts']
-    #print(accounts_by_boto_client)
     for account in response:
         assert account.id == next((
             a['Id'] for a in accounts_by_boto_client
             if a['Name'] == account.name
         ), None)
 
-    response = org.list_accounts_in_ou_by_name(ou_id)
-    assert sorted(response) == sorted([a['Name'] for a in accounts_by_boto_client])
-
-    response = org.list_accounts_in_ou_by_id(ou_id)
-    assert sorted(response) == sorted([a['Id'] for a in accounts_by_boto_client])
+    response = org.list_accounts_in_ou('ou02')
+    accounts_by_boto_client = org.client.list_accounts_for_parent(
+        ParentId=org.get_org_unit_id('ou02')
+    )['Accounts']
+    for account in response:
+        assert account.id == next((
+            a['Id'] for a in accounts_by_boto_client
+            if a['Name'] == account.name
+        ), None)
     clean_up()
 
  
-"""
 @mock_sts
 @mock_organizations
-def test_list_accounts_under_ou():
+def test_list_org_units_in_ou():
     org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org.load()
-    ou02_id = org.get_org_unit_id_by_name('ou02')
-    ou02_1_id = org.get_org_unit_id_by_name('ou02-1')
 
-    response = org._recurse_org_units_under_ou(root_id)
+    response = org.list_org_units_in_ou(root_id)
+    ou_by_boto_client = org.client.list_organizational_units_for_parent(
+        ParentId=root_id
+    )['OrganizationalUnits']
+    for org_unit in response:
+        assert org_unit.id == next((
+            ou['Id'] for ou in ou_by_boto_client
+            if ou['Name'] == org_unit.name
+        ), None)
+
+    response = org.list_org_units_in_ou('ou02')
+    ou_by_boto_client = org.client.list_organizational_units_for_parent(
+        ParentId=org.get_org_unit_id('ou02')
+    )['OrganizationalUnits']
+    for org_unit in response:
+        assert org_unit.id == next((
+            ou['Id'] for ou in ou_by_boto_client
+            if ou['Name'] == org_unit.name
+        ), None)
+    clean_up()
+
+ 
+@mock_sts
+@mock_organizations
+def test_list_org_units_in_ou_recursive():
+    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org.load()
+
+    response = org.list_org_units_in_ou_recursive(root_id)
     assert len(response) == 6
-    for ou_id in response:
-        assert ou_id.startswith('ou-')
+    for ou in response:
+        assert isinstance(ou, orgs.OrganizationalUnit)
+        assert ou.id.startswith('ou-')
 
-    response = org._recurse_org_units_under_ou(ou02_id)
+    response = org.list_org_units_in_ou_recursive('ou02')
     assert len(response) == 2
 
-    response = org.list_accounts_under_ou(root_id)
+    clean_up()
+
+
+@mock_sts
+@mock_organizations
+def test_list_accounts_in_ou_recursive():
+    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org.load()
+
+    response = org.list_accounts_in_ou_recursive(root_id)
     assert len(response) == 13
     for account in response:
-        assert account['Name'].startswith('account')
-        assert re.compile(r'[0-9]{12}').match(account['Id'])
+        assert isinstance(account, orgs.OrgAccount)
+        assert account.name.startswith('account')
+        assert re.compile(r'[0-9]{12}').match(account.id)
 
-    response = org.list_accounts_under_ou(ou02_id)
+    response = org.list_accounts_in_ou_recursive('ou02')
     assert len(response) == 5
 
-    response = org.list_accounts_under_ou(ou02_1_id)
+    response = org.list_accounts_in_ou_recursive('ou02-1')
     assert len(response) == 1
 
-    response = org.list_accounts_under_ou_by_name(root_id)
-    assert len(response) == 13
-    for account_name in response:
-        assert account_name.startswith('account')
-
-    response = org.list_accounts_under_ou_by_id(ou02_id)
-    assert len(response) == 5
-    for account_id in response:
-        assert re.compile(r'[0-9]{12}').match(account_id)
     clean_up()
 
 
@@ -494,4 +518,22 @@ def test_org_dump():
     assert isinstance(json_dump, str)
     assert json.loads(json_dump) == dump
     clean_up()
+
+"""
+    # # GONE
+    # response = org.list_accounts_in_ou_by_name(ou_id)
+    # assert sorted(response) == sorted([a['Name'] for a in accounts_by_boto_client])
+
+    # response = org.list_accounts_in_ou_by_id(ou_id)
+    # assert sorted(response) == sorted([a['Id'] for a in accounts_by_boto_client])
+
+    #response = list_accounts_in_ou_recursive_by_name(root_id)
+    #assert len(response) == 13
+    #for account_name in response:
+    #    assert account_name.startswith('account')
+
+    #response = list_accounts_in_ou_recursive_by_id(ou02_id)
+    #assert len(response) == 5
+    #for account_id in response:
+    #    assert re.compile(r'[0-9]{12}').match(account_id)
 """
