@@ -1,6 +1,6 @@
 import time
 
-from organizer import utils
+from organizer import utils, orgs
 
 
 DEFAULT_REGION = 'us-east-1'
@@ -9,13 +9,24 @@ DEFAULT_REGION = 'us-east-1'
 class Crawler(object):
 
     def __init__(self, org, **kwargs):
+        """
+        kwargs:
+        :access_role: string
+        :accounts: string, list of string, or list of OrgAccount
+        :regions: string, or list of string
+        """
         self.org = org
+        self.requests = []
         self.access_role = kwargs.get('access_role', org.access_role)
-        self.accounts = kwargs.get('accounts', org.accounts)
         self.regions = kwargs.get('regions', [DEFAULT_REGION])
         if len(self.regions) == 0:
             self.regions.append(DEFAULT_REGION)
-        self.requests = []
+
+        #self.accounts = kwargs.get('accounts', org.accounts)
+        self.accounts = [
+            org.get_account_by_name_or_id(account) for account
+            in kwargs.get('accounts', org.accounts)
+        ]
 
     def get_regions(self):
         return self.regions

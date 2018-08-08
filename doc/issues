@@ -1,3 +1,12 @@
+________________________________________________________________________________
+8/7/2018
+
+should self.org_units contain the root ou?
+currently I just do a test for 'root' or self.root_id when listing org_units.
+
+
+________________________________________________________________________________
+8/2/2018
 (python3.6) agould@horus:~/git-repos/github/ucopacme/organizer/test> time organizer awsauth/OrgAdmin list_accounts
 Exception in thread Thread-24:
 Traceback (most recent call last):

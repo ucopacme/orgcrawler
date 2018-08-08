@@ -41,10 +41,6 @@ from docopt import docopt
 from organizer import crawlers, orgs, utils
 
 
-def initialize_crawler(master_account_id, master_role, account_role=None):
-    return crawler
-
-
 def process_request_outputs(request):
     collector = []
     for response in request.responses:
@@ -96,7 +92,7 @@ def main():
 
     crawler = crawlers.Crawler(
         org,
-        access_role=args.get('--accoun-role', args['--master-role']),
+        access_role=args.get('--account-role', args['--master-role']),
         accounts=accounts,
         regions=regions,
     )

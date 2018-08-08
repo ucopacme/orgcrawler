@@ -37,19 +37,13 @@ def test_get_payload_function_from_file():
 
 @mock_sts
 @mock_organizations
-def test_initialize_crawler():
-    org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
-    crawler = orgcrawler.initialize_crawler(ORG_ACCESS_ROLE)
-    assert isinstance(crawler, crawlers.Crawler)
-    assert isinstance(crawler.org, orgs.Org)
-
-
-@mock_sts
-@mock_organizations
 @mock_iam
 def test_process_request_outputs():
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
-    crawler = orgcrawler.initialize_crawler(ORG_ACCESS_ROLE)
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org.load()
+    crawler = crawlers.Crawler(org, access_role=ORG_ACCESS_ROLE)
+    crawler.load_account_credentials()
     crawler.execute(payloads.set_account_alias)
     request = crawler.execute(payloads.get_account_aliases)
     response = orgcrawler.process_request_outputs(request)
