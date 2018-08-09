@@ -66,12 +66,20 @@ class Org(object):
         self.accounts = []
         self.org_units = []
 
+    def dump_accounts(self, account_list=None):
+        if not account_list:
+            account_list = self.accounts
+        return [a.dump() for a in account_list]
+
+    def dump_org_units(self):
+        return [ou.dump() for ou in self.org_units]
+
     def dump(self):
         org_dump = dict()
         org_dump.update(vars(self).items())
-        org_dump['accounts'] = [a.dump() for a in self.accounts]
-        org_dump['org_units'] = [ou.dump() for ou in self.org_units]
         org_dump.update(dict(client=None))
+        org_dump['accounts'] = self.dump_accounts()
+        org_dump['org_units'] = self.dump_org_units()
         return org_dump
 
     def dump_json(self):
@@ -197,11 +205,6 @@ class Org(object):
 
     # Query methods
 
-    def dump_accounts(self, account_list=None):
-        if not account_list:
-            account_list = self.accounts
-        return [a.dump() for a in account_list]
-
     def list_accounts_by_name(self, account_list=None):
         if not account_list:
             account_list = self.accounts
@@ -228,9 +231,6 @@ class Org(object):
                 or identifier in a.aliases
             )
         ), None)
-
-    def dump_org_units(self):
-        return [ou.dump() for ou in self.org_units]
 
     def list_org_units_by_name(self, ou_list=None):
         if not ou_list:

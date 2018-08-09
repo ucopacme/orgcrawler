@@ -77,9 +77,9 @@ def test_crawler_init():
     assert isinstance(crawler.org, orgs.Org)
     assert crawler.access_role == org.access_role
     assert crawler.accounts == org.accounts
-    assert crawler.regions == [crawlers.DEFAULT_REGION]
+    assert crawler.regions == utils.all_regions()
     
-    ou01_id = org.get_org_unit_id_by_name('ou01')
+    ou01_id = org.get_org_unit_id('ou01')
     ou01_accounts = org.list_accounts_in_ou(ou01_id)
     crawler = crawlers.Crawler(
         org,
@@ -110,12 +110,12 @@ def test_load_account_credentials():
 @mock_sts
 @mock_organizations
 @mock_iam
-def test_get_update_regions():
+def test_get_or_update_regions():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
     org.load()
     crawler = crawlers.Crawler(org)
-    assert crawler.get_regions() == ['us-east-1']
+    assert crawler.get_regions() == utils.all_regions()
     crawler.update_regions(utils.regions_for_service('iam'))
     assert crawler.get_regions() == ['us-east-1']
     crawler.update_regions(utils.all_regions())
@@ -161,7 +161,7 @@ def test_execute():
     assert request2 == crawler.requests[1]
     for request in crawler.requests:
         assert isinstance(request, crawlers.CrawlerRequest)
-        assert len(request.responses) == len(crawler.accounts)
+        assert len(request.responses) == len(crawler.accounts) * len(crawler.regions)
         for response in request.responses:
             assert isinstance(response, crawlers.CrawlerResponse)
     assert crawler.requests[0].name == 'set_account_alias'

@@ -10,11 +10,18 @@ import yaml
 import boto3
 from botocore.exceptions import ClientError
 
+import organizer
+
 
 def jsonfmt(obj):
     if isinstance(obj, str):
         return obj
-    return json.dumps(obj, indent=4, separators=(',', ': '))
+    return json.dumps(
+        obj,
+        indent=4,
+        separators=(',', ': '),
+        default=organizer.orgs.OrgObject.dump
+    )
 
 
 def yamlfmt(obj):

@@ -1,0 +1,7 @@
+orgcrawler -r awsauth/OrgAdmin 
+  get_account_aliases \
+  --regions-for-service ec2 \
+  --account-query list_accounts_in_ou_recursive \
+  --account-query-arg ucpath \
+  --account-role awsauth/OrgAdmin \
+  -f ../organizer/cli/payloads.py

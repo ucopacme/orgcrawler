@@ -19,22 +19,20 @@ Options:
 
 Available Query Commands:
     dump
-    dump_json
-    list_accounts
+    dump_accounts
+    dump_org_units
     list_accounts_by_name
     list_accounts_by_id
-    list_org_units
     list_org_units_by_name
     list_org_units_by_id
-    list_accounts_in_ou OU_NAME
-    list_accounts_in_ou_by_name OU_NAME
-    list_accounts_in_ou_by_id OU_NAME
-    list_accounts_under_ou OU_NAME
-    list_accounts_under_ou_by_name OU_NAME
-    list_accounts_under_ou_by_id OU_NAME
+    get_account ACCOUNT_IDENTIFIER
     get_account_id_by_name ACCOUNT_NAME
     get_account_name_by_id ACCOUNT_ID
-    get_org_unit_id_by_name OU_NAME
+    get_org_unit_id OU_IDENTIFIER
+    list_accounts_in_ou OU_IDENTIFIER
+    list_accounts_in_ou_recursive OU_IDENTIFIER
+    list_org_units_in_ou OU_IDENTIFIER
+    list_org_units_in_ou_recursive OU_IDENTIFIER
 """
 
 
@@ -46,24 +44,22 @@ from organizer.utils import get_master_account_id
 
 _COMMANDS = [
     'dump',
-    'dump_json',
-    'list_accounts',
+    'dump_accounts',
+    'dump_org_units',
     'list_accounts_by_name',
     'list_accounts_by_id',
-    'list_org_units',
     'list_org_units_by_name',
     'list_org_units_by_id',
 ]
 _COMMANDS_WITH_ARG = [
-    'list_accounts_in_ou',
-    'list_accounts_in_ou_by_name',
-    'list_accounts_in_ou_by_id',
-    'list_accounts_under_ou',
-    'list_accounts_under_ou_by_name',
-    'list_accounts_under_ou_by_id',
+    'get_account',
     'get_account_id_by_name',
     'get_account_name_by_id',
-    'get_org_unit_id_by_name',
+    'get_org_unit_id',
+    'list_accounts_in_ou',
+    'list_accounts_in_ou_recursive',
+    'list_org_units_in_ou',
+    'list_org_units_in_ou_recursive',
 ]
 AVAILABLE_COMMANDS = _COMMANDS + _COMMANDS_WITH_ARG
 

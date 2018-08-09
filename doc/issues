@@ -1,3 +1,35 @@
+
+________________________________________________________________________________
+8/8/2018
+in cli.orgcrawler when bad account criteria:
+
+Traceback (most recent call last):
+  File "/home/agould/python-venv/python3.6/bin/orgcrawler", line 11, in <module>
+    load_entry_point('organizer', 'console_scripts', 'orgcrawler')()
+  File "/home/agould/git-repos/github/ucopacme/organizer/organizer/cli/orgcrawler.py", line 84, in main
+    accounts = eval('org.' + args['--account-query'])(args['--account-query-arg'])
+  File "<string>", line 1, in <module>
+AttributeError: 'Org' object has no attribute 'list_accounts_under_ou'
+
+---
+
+in cli.orgcrawler when using non-existent --account-role the tread just hangs:
+
+^CTraceback (most recent call last):
+  File "/home/agould/python-venv/python3.6/bin/orgcrawler", line 11, in <module>
+    load_entry_point('organizer', 'console_scripts', 'orgcrawler')()
+  File "/home/agould/git-repos/github/ucopacme/organizer/organizer/cli/orgcrawler.py", line 103, in main
+    crawler.load_account_credentials()
+  File "/home/agould/git-repos/github/ucopacme/organizer/organizer/crawlers.py", line 63, in load_account_credentials
+    thread_count=len(self.accounts)
+  File "/home/agould/git-repos/github/ucopacme/organizer/organizer/utils.py", line 89, in queue_threads
+    q.join()
+  File "/usr/local/lib/python3.6/queue.py", line 83, in join
+    self.all_tasks_done.wait()
+  File "/usr/local/lib/python3.6/threading.py", line 295, in wait
+    waiter.acquire()
+KeyboardInterrupt
+
 ________________________________________________________________________________
 8/7/2018
 

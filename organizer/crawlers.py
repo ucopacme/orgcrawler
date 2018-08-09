@@ -8,6 +8,7 @@ DEFAULT_REGION = 'us-east-1'
 
 class Crawler(object):
 
+    # TESTS NOT COMPLETE
     def __init__(self, org, **kwargs):
         """
         kwargs:
@@ -18,15 +19,31 @@ class Crawler(object):
         self.org = org
         self.requests = []
         self.access_role = kwargs.get('access_role', org.access_role)
-        self.regions = kwargs.get('regions', [DEFAULT_REGION])
-        if len(self.regions) == 0:
-            self.regions.append(DEFAULT_REGION)
 
-        #self.accounts = kwargs.get('accounts', org.accounts)
-        self.accounts = [
-            org.get_account_by_name_or_id(account) for account
-            in kwargs.get('accounts', org.accounts)
-        ]
+        if 'accounts' in kwargs:
+            if isinstance(kwargs['accounts'], str):
+                self.accounts = [org.get_account(kwargs['accounts'])]
+            elif isinstance(kwargs['accounts'], list):
+                self.accounts = [
+                    org.get_account(account) for account in kwargs['accounts']
+                ]
+            else:
+                raise ValueError('keyword argument "accounts" must be list or str')
+        else:
+            self.accounts = org.accounts
+
+        if 'regions' in kwargs:
+            if isinstance(kwargs['regions'], str):
+                self.regions = [kwargs['regions']]
+            elif isinstance(kwargs['regions'], list):
+                if len(kwargs['regions']) == 0:
+                    self.regions = [DEFAULT_REGION]
+                else:
+                    self.regions = kwargs['regions']
+            else:
+                raise ValueError('keyword argument "regions" must be list or str')
+        else:
+            self.regions = utils.all_regions()
 
     def get_regions(self):
         return self.regions
