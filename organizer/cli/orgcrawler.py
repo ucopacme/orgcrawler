@@ -10,7 +10,7 @@ Usage:
 Arguments:
     PAYLOAD         Name of the payload function to run in each account
                     Orgcrawler attempts to resolve this name from $PYTHON_PATH
-    ARGS            Argument list for PAYLOAD 
+    ARGS            Argument list for PAYLOAD
 
 Options:
     -h, --help                  Print help message
@@ -35,7 +35,6 @@ import os
 import sys
 import importlib
 
-import boto3
 from docopt import docopt
 
 from organizer import crawlers, orgs, utils
@@ -63,14 +62,14 @@ def get_payload_function_from_file(file_name, payload_name):
         file_name = os.path.expanduser(file_name)
     module_dir = os.path.dirname(file_name)
     sys.path.append(os.path.abspath(module_dir))
-    module_name = os.path.basename(file_name).replace('.py','')
+    module_name = os.path.basename(file_name).replace('.py', '')
     module = importlib.import_module(module_name)
     return getattr(module, payload_name)
 
 
 def main():
     args = docopt(__doc__)
-    print(args)
+    # print(args)
 
     if args['--master-account-id'] is None:
         args['--master-account-id'] = utils.get_master_account_id(args['--master-role'])
@@ -82,13 +81,17 @@ def main():
 
     if args['--account-query']:
         accounts = eval('org.' + args['--account-query'])(args['--account-query-arg'])
-    else:
+    elif args['--accounts']:
         accounts = args['--accounts'].split(',')
+    else:
+        accounts = None
 
     if args['--regions-for-service']:
         regions = utils.regions_for_service(args['--regions-for-service'])
-    else:
+    elif args['--regions']:
         regions = args['--regions'].split(',')
+    else:
+        regions = None
 
     crawler = crawlers.Crawler(
         org,
@@ -96,24 +99,16 @@ def main():
         accounts=accounts,
         regions=regions,
     )
-    print(crawler)
-    print(crawler.access_role)
-    print(crawler.accounts)
-    print(crawler.regions)
     crawler.load_account_credentials()
 
     if args['--payload-file']:
         payload = get_payload_function_from_file(args['--payload-file'], args['PAYLOAD'])
     else:
         payload = get_payload_function_from_string(args['PAYLOAD'])
-    print(payload)
+    # print(payload)
     request = crawler.execute(payload)
     print(process_request_outputs(request))
 
-"""
- 'ARGS': [],
- 'PAYLOAD': 'list_account_aliases'}
-"""
 
 if __name__ == "__main__":
     main()

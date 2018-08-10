@@ -1,7 +1,27 @@
-orgcrawler -r awsauth/OrgAdmin 
+# run this from within base project dir
+orgcrawler -r awsauth/OrgAdmin \
   get_account_aliases \
   --regions-for-service ec2 \
   --account-query list_accounts_in_ou_recursive \
   --account-query-arg ucpath \
   --account-role awsauth/OrgAdmin \
-  -f ../organizer/cli/payloads.py
+  -f organizer/cli/payloads.py
+
+# should fail
+orgcrawler -r awsauth/OrgAdmin \
+  organizer.cli.payloads.get_account_aliases \
+  --regions-for-service iam \
+  --account-role NoSuchRole
+
+# should fail
+orgcrawler -r NoSuchRole \
+  organizer.cli.payloads.get_account_aliases \
+  --regions-for-service iam \
+  --account-role awsauth/OrgAdmin
+
+# should succeed
+orgcrawler -r awsauth/OrgAdmin \
+  organizer.cli.payloads.get_account_aliases \
+  --regions-for-service iam \
+  --account-role awsauth/OrgAdmin
+

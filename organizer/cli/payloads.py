@@ -31,6 +31,3 @@ def list_hosted_zones(region, account):
             RecordSets=response['ResourceRecordSets'],
         ))
     return dict(HostedZones=hosted_zones)
-
-
-

@@ -1,4 +1,5 @@
 import os
+import sys
 import pickle
 import json
 from datetime import datetime, timedelta
@@ -105,15 +106,24 @@ class Org(object):
             self._load_org_units()
             self._save_cached_org_to_file()
 
+    # ISSUE: this method is redundant
     def _load_client(self):
         self.client = self._get_org_client()
 
     def _get_org_client(self):
         """ Returns a boto3 client for Organizations object """
-        credentials = utils.assume_role_in_account(
-            self.master_account_id,
-            self.access_role
-        )
+        try:
+            credentials = utils.assume_role_in_account(
+                self.master_account_id,
+                self.access_role,
+            )
+        except ClientError as e:
+            errmsg = 'cannot assume role {} in account {}: {}'.format(
+                self.access_role,
+                self.master_account_id,
+                e.response['Error']['Code'],
+            )
+            sys.exit(errmsg)
         return boto3.client('organizations', **credentials)
 
     def _get_cached_org_from_file(self):
@@ -226,9 +236,9 @@ class Org(object):
             return identifier
         return next((
             a for a in self.accounts if (
-                identifier == a.name
-                or identifier == a.id
-                or identifier in a.aliases
+                identifier == a.name or
+                identifier == a.id or
+                identifier in a.aliases
             )
         ), None)
 
@@ -250,8 +260,8 @@ class Org(object):
             return identifier.id
         return next((
             ou.id for ou in self.org_units if (
-                identifier == ou.name
-                or identifier == ou.id
+                identifier == ou.name or
+                identifier == ou.id
             )
         ), None)
 

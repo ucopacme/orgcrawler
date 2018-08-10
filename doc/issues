@@ -30,6 +30,23 @@ in cli.orgcrawler when using non-existent --account-role the tread just hangs:
     waiter.acquire()
 KeyboardInterrupt
 
+https://gist.github.com/bsphere/f1e0a7d033dab2871c5c
+https://bugs.python.org/issue1230540
+https://stackoverflow.com/questions/2829329/catch-a-threads-exception-in-the-caller-thread-in-python/12223550#12223550
+https://stackoverflow.com/questions/1854216/raise-unhandled-exceptions-in-a-thread-in-the-main-thread
+
+
+try:
+    self.result = self.do_something_dangerous()
+except Exception as e:
+    import sys
+    self.exc_info = sys.exc_info()
+
+and on your main thread:
+
+if self.exc_info:
+    raise self.exc_info[1].with_traceback(self.exc_info[2])
+return self.result
 ________________________________________________________________________________
 8/7/2018
 

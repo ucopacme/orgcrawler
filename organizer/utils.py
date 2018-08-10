@@ -31,26 +31,14 @@ def yamlfmt(obj):
 
 
 def assume_role_in_account(account_id, role_name):
+    # any exceptions must be caugh by calling function
     role_arn = 'arn:aws:iam::{}:role/{}'.format(account_id, role_name)
     role_session_name = account_id + '-' + role_name.split('/')[-1]
     sts_client = boto3.client('sts')
-    try:
-        credentials = sts_client.assume_role(
-            RoleArn=role_arn,
-            RoleSessionName=role_session_name
-        )['Credentials']
-    except ClientError as e:
-        if e.response['Error']['Code'] == 'AccessDenied':
-            errmsg = 'cannot assume role {} in account {}: AccessDenied'.format(
-                role_name, account_id
-            )
-        elif e.response['Error']['Code'] == 'ExpiredToken':
-            errmsg = 'cannot assume role {} in account {}: ExpiredToken'.format(
-                role_name, account_id
-            )
-        else:
-            raise e
-        sys.exit(errmsg)
+    credentials = sts_client.assume_role(
+        RoleArn=role_arn,
+        RoleSessionName=role_session_name
+    )['Credentials']
     return dict(
         aws_access_key_id=credentials['AccessKeyId'],
         aws_secret_access_key=credentials['SecretAccessKey'],
@@ -64,7 +52,15 @@ def get_master_account_id(role_name=None):
         account_id = sts_client.get_caller_identity()['Account']
     except ClientError as e:
         sys.exit('Cant obtain master account id: {}'.format(e.response['Error']['Code']))
-    credentials = assume_role_in_account(account_id, role_name)
+    try:
+        credentials = assume_role_in_account(account_id, role_name)
+    except ClientError as e:
+        errmsg = 'cannot assume role {} in account {}: {}'.format(
+            role_name,
+            account_id,
+            e.response['Error']['Code'],
+        )
+        sys.exit(errmsg)
     client = boto3.client('organizations', **credentials)
     try:
         return client.describe_organization()['Organization']['MasterAccountId']

@@ -1,6 +1,9 @@
+import sys
 import time
 
-from organizer import utils, orgs
+from botocore.exceptions import ClientError
+
+from organizer import utils
 
 
 DEFAULT_REGION = 'us-east-1'
@@ -17,11 +20,15 @@ class Crawler(object):
         :regions: string, or list of string
         """
         self.org = org
+        self.exc_info = None
+        self.error = None
         self.requests = []
         self.access_role = kwargs.get('access_role', org.access_role)
 
         if 'accounts' in kwargs:
-            if isinstance(kwargs['accounts'], str):
+            if kwargs['accounts'] is None:
+                self.accounts = org.accounts
+            elif isinstance(kwargs['accounts'], str):
                 self.accounts = [org.get_account(kwargs['accounts'])]
             elif isinstance(kwargs['accounts'], list):
                 self.accounts = [
@@ -33,7 +40,9 @@ class Crawler(object):
             self.accounts = org.accounts
 
         if 'regions' in kwargs:
-            if isinstance(kwargs['regions'], str):
+            if kwargs['regions'] is None:
+                self.regions = utils.all_regions()
+            elif isinstance(kwargs['regions'], str):
                 self.regions = [kwargs['regions']]
             elif isinstance(kwargs['regions'], list):
                 if len(kwargs['regions']) == 0:
@@ -55,13 +64,26 @@ class Crawler(object):
 
     def load_account_credentials(self):
         def get_credentials_for_account(account, crawler):
-            account.load_credentials(crawler.access_role)
+            try:
+                account.load_credentials(crawler.access_role)
+            except ClientError as e:
+                crawler.error = 'cannot assume role {} in account {}: {}'.format(
+                    crawler.access_role,
+                    account.name,
+                    e.response['Error']['Code']
+                )
+            except Exception:
+                crawler.exc_info = sys.exc_info()
         utils.queue_threads(
             self.accounts,
             get_credentials_for_account,
             func_args=(self,),
             thread_count=len(self.accounts)
         )
+        if self.error:
+            sys.exit(self.error)
+        if self.exc_info:
+            raise self.exc_info[1].with_traceback(self.exc_info[2])
 
     def execute(self, payload, *args, **kwargs):
 
