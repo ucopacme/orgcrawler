@@ -6,11 +6,39 @@ except ImportError:
     import Queue as queue
 import json
 import yaml
+from datetime import datetime
+from functools import singledispatch
 
 import boto3
 from botocore.exceptions import ClientError
 
-import organizer
+from organizer import orgs
+
+
+@singledispatch
+def to_serializable(val):
+    """Used by default."""
+    return str(val)
+
+
+@to_serializable.register(datetime)
+def ts_datetime(val):
+    """Used if *val* is an instance of datetime."""
+    return val.isoformat()
+
+
+"""
+## This does not work:
+
+  File "/home/agould/git-repos/github/ucopacme/organizer/organizer/utils.py", line 34, in <module>
+    def ts_org_object(val: orgs.OrgObject):
+AttributeError: module 'organizer.orgs' has no attribute 'OrgObject'
+
+##@to_serializable.register(orgs.OrgObject)
+@to_serializable.register
+def ts_org_object(val: orgs.OrgObject):
+    return val.dump()
+"""
 
 
 def jsonfmt(obj):
@@ -20,7 +48,8 @@ def jsonfmt(obj):
         obj,
         indent=4,
         separators=(',', ': '),
-        default=organizer.orgs.OrgObject.dump
+        #default=to_serializable,
+        default=orgs.OrgObject.dump,
     )
 
 

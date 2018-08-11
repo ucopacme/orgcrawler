@@ -85,6 +85,12 @@ class Crawler(object):
         if self.exc_info:
             raise self.exc_info[1].with_traceback(self.exc_info[2])
 
+    # ISSUES:
+    # rename CrawlerRequest to CrawlerExecution
+    # likewise the Crawler.request attr to Crawler.execution
+    #
+    # add exception handling as with load_account_credentials
+    #
     def execute(self, payload, *args, **kwargs):
 
         def run_payload_in_account(account_region_map, request, *args):
@@ -92,7 +98,11 @@ class Crawler(object):
             account = account_region_map['account']
             response = CrawlerResponse(region, account)
             response.timer.start()
-            response.payload_output = request.payload(region, account, *args)
+            try:
+                response.payload_output = request.payload(region, account, *args)
+            except Exception as e:
+                response.exc_info = sys.exc_info()
+                request.errors = True
             response.timer.stop()
             request.responses.append(response)
 
@@ -110,28 +120,13 @@ class Crawler(object):
             thread_count=thread_count,
         )
         request.timer.stop()
+        if request.errors:
+            request.handle_errors()
         self.requests.append(request)
         return request
 
     def get_request(self, name):
         return next((r for r in self.requests if r.name == name), None)
-
-    def execute_unthreaded(self, payload, *args, **kwargs):
-        """This is here for comparison testing.  Should be deleted later."""
-        def run_payload_in_account(account, region, request, *args):
-            response = CrawlerResponse(region, account)
-            response.timer.start()
-            response.payload_output = request.payload(region, account, *args)
-            response.timer.stop()
-            request.responses.append(response)
-        request = CrawlerRequest(payload)
-        request.timer.start()
-        for region in self.regions:
-            for account in self.accounts:
-                run_payload_in_account(region, request, *args)
-        request.timer.stop()
-        self.requests.append(request)
-        return request
 
 
 class CrawlerTimer(object):
@@ -163,6 +158,7 @@ class CrawlerRequest(object):
         self.payload = payload
         self.name = payload.__name__
         self.responses = []
+        self.errors = None
         self.timer = CrawlerTimer()
 
     def dump(self):
@@ -173,6 +169,17 @@ class CrawlerRequest(object):
             statistics=self.timer.dump()
         )
 
+    def handle_errors(self):
+        errors = [response for response in self.responses if response.exc_info]
+        e = errors.pop().exc_info
+        errmsg = 'OrgCrawler.execute encountered {} errors while running "{}". Example:'.format(
+            len(errors),
+            self.name,
+        )
+        print(errmsg)
+        sys.excepthook(e[0], e[1], e[2]),
+        sys.exit()
+                
 
 class CrawlerResponse(object):
 
@@ -181,6 +188,8 @@ class CrawlerResponse(object):
         self.account = account
         self.payload_output = None
         self.timer = CrawlerTimer()
+        self.exc_info = None
+        self.errmsg = None
 
     def dump(self):
         return dict(

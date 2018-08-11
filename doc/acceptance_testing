@@ -25,3 +25,18 @@ orgcrawler -r awsauth/OrgAdmin \
   --regions-for-service iam \
   --account-role awsauth/OrgAdmin
 
+
+orgcrawler -r awsauth/OrgAdmin \
+  organizer.cli.payloads.config_resource_counts \
+  --regions us-west-2 \
+  --account-role awsauth/OrgAdmin
+
+orgcrawler -r awsauth/OrgAdmin \
+  organizer.cli.payloads.config_describe_rules \
+  --regions us-west-2
+
+orgcrawler -r awsauth/OrgAdmin \
+  organizer.cli.payloads.config_describe_recorder_status \
+  --regions us-west-2
+
+

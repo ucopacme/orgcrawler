@@ -69,43 +69,33 @@ def get_payload_function_from_file(file_name, payload_name):
 
 def main():
     args = docopt(__doc__)
-    # print(args)
 
     if args['--master-account-id'] is None:
         args['--master-account-id'] = utils.get_master_account_id(args['--master-role'])
-    org = orgs.Org(
-        args['--master-account-id'],
-        args['--master-role'],
-    )
-    org.load()
 
+    crawler_args = dict()
     if args['--account-query']:
-        accounts = eval('org.' + args['--account-query'])(args['--account-query-arg'])
+        crawler_args['accounts'] = eval('org.' + args['--account-query'])(args['--account-query-arg'])
     elif args['--accounts']:
-        accounts = args['--accounts'].split(',')
-    else:
-        accounts = None
+        crawler_args['accounts'] = args['--accounts'].split(',')
 
     if args['--regions-for-service']:
-        regions = utils.regions_for_service(args['--regions-for-service'])
+        crawler_args['regions'] = utils.regions_for_service(args['--regions-for-service'])
     elif args['--regions']:
-        regions = args['--regions'].split(',')
-    else:
-        regions = None
+        crawler_args['regions'] = args['--regions'].split(',')
 
-    crawler = crawlers.Crawler(
-        org,
-        access_role=args.get('--account-role', args['--master-role']),
-        accounts=accounts,
-        regions=regions,
-    )
-    crawler.load_account_credentials()
+    if args['--account-role']:
+        crawler_args['access_role'] = args['--account-role']
 
     if args['--payload-file']:
         payload = get_payload_function_from_file(args['--payload-file'], args['PAYLOAD'])
     else:
         payload = get_payload_function_from_string(args['PAYLOAD'])
-    # print(payload)
+
+    org = orgs.Org(args['--master-account-id'], args['--master-role'])
+    org.load()
+    crawler = crawlers.Crawler( org, **crawler_args)
+    crawler.load_account_credentials()
     request = crawler.execute(payload)
     print(process_request_outputs(request))
 
