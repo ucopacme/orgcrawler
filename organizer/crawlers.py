@@ -91,6 +91,8 @@ class Crawler(object):
     #
     # add exception handling as with load_account_credentials
     #
+    # forgo use of *args, just allow **kwargs
+    #
     def execute(self, payload, *args, **kwargs):
 
         def run_payload_in_account(account_region_map, request, *args):
@@ -111,6 +113,7 @@ class Crawler(object):
             for account in self.accounts:
                 accounts_and_regions.append(dict(account=account, region=region))
         thread_count = kwargs.get('thread_count', len(self.accounts))
+        # thread_count = kwargs.get('thread_count', len(self.accounts)*len(self.regions))
         request = CrawlerRequest(payload)
         request.timer.start()
         utils.queue_threads(
@@ -169,17 +172,21 @@ class CrawlerRequest(object):
             statistics=self.timer.dump()
         )
 
+    # NO TEST
     def handle_errors(self):
         errors = [response for response in self.responses if response.exc_info]
-        e = errors.pop().exc_info
-        errmsg = 'OrgCrawler.execute encountered {} errors while running "{}". Example:'.format(
-            len(errors),
-            self.name,
+        exc_info = errors.pop().exc_info
+        errmsg = (
+            'OrgCrawler.execute encountered {} errors while running "{}". '
+            'Example:\n'.format(
+                len(errors),
+                self.name,
+            )
         )
-        print(errmsg)
-        sys.excepthook(e[0], e[1], e[2]),
+        print(errmsg, file=sys.stderr)
+        sys.excepthook(*exc_info)
         sys.exit()
-                
+
 
 class CrawlerResponse(object):
 
@@ -189,7 +196,6 @@ class CrawlerResponse(object):
         self.payload_output = None
         self.timer = CrawlerTimer()
         self.exc_info = None
-        self.errmsg = None
 
     def dump(self):
         return dict(

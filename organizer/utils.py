@@ -12,8 +12,6 @@ from functools import singledispatch
 import boto3
 from botocore.exceptions import ClientError
 
-from organizer import orgs
-
 
 @singledispatch
 def to_serializable(val):
@@ -22,34 +20,28 @@ def to_serializable(val):
 
 
 @to_serializable.register(datetime)
-def ts_datetime(val):
-    """Used if *val* is an instance of datetime."""
+def _(val):
     return val.isoformat()
 
 
-"""
-## This does not work:
-
-  File "/home/agould/git-repos/github/ucopacme/organizer/organizer/utils.py", line 34, in <module>
-    def ts_org_object(val: orgs.OrgObject):
-AttributeError: module 'organizer.orgs' has no attribute 'OrgObject'
-
-##@to_serializable.register(orgs.OrgObject)
-@to_serializable.register
-def ts_org_object(val: orgs.OrgObject):
-    return val.dump()
-"""
+# @to_serializable.register(organizer.orgs.OrgObject)
+# def _(val):
+#     return val.dump()
+#
+# Unfortunateley, This does not work:
+#   File "/home/agould/git-repos/github/ucopacme/organizer/organizer/utils.py", line 34, in <module>
+#     def ts_org_object(val: orgs.OrgObject):
+# AttributeError: module 'organizer.orgs' has no attribute 'OrgObject'
 
 
-def jsonfmt(obj):
+def jsonfmt(obj, default=to_serializable):
     if isinstance(obj, str):
         return obj
     return json.dumps(
         obj,
         indent=4,
         separators=(',', ': '),
-        #default=to_serializable,
-        default=orgs.OrgObject.dump,
+        default=default,
     )
 
 

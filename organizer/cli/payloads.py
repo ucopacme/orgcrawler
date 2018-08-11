@@ -32,20 +32,21 @@ def list_hosted_zones(region, account):
         ))
     return dict(HostedZones=hosted_zones)
 
+
 def config_resource_counts(region, account):
     client = boto3.client('config', region_name=region, **account.credentials)
     response = client.get_discovered_resource_counts()
     return dict(resourceCounts=response['resourceCounts'])
 
+
 def config_describe_rules(region, account):
     client = boto3.client('config', region_name=region, **account.credentials)
     response = client.describe_config_rules()
-    #return dict(ConfigRules=response['ConfigRules'])
-    return dict(ConfigRules=response['Config'])
+    return dict(ConfigRules=response['ConfigRules'])
 
-""" This one fails because datetime objects are not json streamable
+
 def config_describe_recorder_status(region, account):
     client = boto3.client('config', region_name=region, **account.credentials)
     response = client.describe_configuration_recorder_status()
     return dict(ConfigurationRecordersStatus=response['ConfigurationRecordersStatus'])
-"""
+    # return dict(ConfigurationRecordersStatus=response['blee'])

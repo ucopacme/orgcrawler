@@ -106,7 +106,6 @@ class Org(object):
             self._load_org_units()
             self._save_cached_org_to_file()
 
-    # ISSUE: this method is redundant
     def _load_client(self):
         self.client = self._get_org_client()
 

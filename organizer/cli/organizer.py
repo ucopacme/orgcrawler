@@ -39,7 +39,6 @@ Available Query Commands:
 import sys
 from docopt import docopt
 from organizer import orgs, utils
-from organizer.utils import get_master_account_id
 
 
 _COMMANDS = [
@@ -64,6 +63,10 @@ _COMMANDS_WITH_ARG = [
 AVAILABLE_COMMANDS = _COMMANDS + _COMMANDS_WITH_ARG
 
 
+def jsonfmt(obj):
+    return utils.jsonfmt(obj, orgs.OrgObject.dump)
+
+
 def main():
     args = docopt(__doc__)
     if len(sys.argv) == 1:
@@ -75,7 +78,7 @@ def main():
         print('ERROR: Query command "{}" requires an argument'.format(args['COMMAND']))
         sys.exit(__doc__)
     if args['-f'] == 'json':
-        formatter = utils.jsonfmt
+        formatter = jsonfmt
     elif args['-f'] == 'yaml':
         formatter = utils.yamlfmt
     else:
@@ -83,7 +86,7 @@ def main():
         sys.exit(__doc__)
 
     if args['-m'] is None:
-        master_account_id = get_master_account_id(args['-r'])
+        master_account_id = utils.get_master_account_id(args['-r'])
     else:
         master_account_id = args['-m']
 

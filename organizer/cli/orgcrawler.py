@@ -94,7 +94,7 @@ def main():
 
     org = orgs.Org(args['--master-account-id'], args['--master-role'])
     org.load()
-    crawler = crawlers.Crawler( org, **crawler_args)
+    crawler = crawlers.Crawler(org, **crawler_args)
     crawler.load_account_credentials()
     request = crawler.execute(payload)
     print(process_request_outputs(request))

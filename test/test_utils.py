@@ -1,25 +1,49 @@
 import re
 import time
+import datetime
 import json
+
 import yaml
 import pytest
-
 import boto3
 from botocore.exceptions import ClientError
 from moto import mock_sts, mock_organizations
 
-from organizer import utils
-from .test_orgs import SIMPLE_ORG_SPEC
+from organizer import utils, orgs
+from .test_orgs import SIMPLE_ORG_SPEC, MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE
 
 
 def test_jsonfmt():
     output = utils.jsonfmt(SIMPLE_ORG_SPEC)
+    assert isinstance(output, str)
+    dt = datetime.datetime.utcnow()
+    output = utils.jsonfmt(dt)
+    assert isinstance(output, str)
+    account = orgs.OrgAccount(
+        orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE),
+        name='account01',
+        id='112233445566',
+        email='account01@example.org',
+    )
+    output = utils.jsonfmt(account, orgs.OrgObject.dump)
     assert isinstance(output, str)
 
 
 def test_yamlfmt():
     output = utils.yamlfmt(SIMPLE_ORG_SPEC)
     assert isinstance(output, str)
+    dt = datetime.datetime.utcnow()
+    output = utils.yamlfmt(dt)
+    assert isinstance(output, str)
+    account = orgs.OrgAccount(
+        orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE),
+        name='account01',
+        id='112233445566',
+        email='account01@example.org',
+    )
+    output = utils.yamlfmt(account)
+    assert isinstance(output, str)
+
 
 @mock_sts
 def test_assume_role_in_account():
