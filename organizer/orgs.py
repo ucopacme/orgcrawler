@@ -10,44 +10,6 @@ from botocore.exceptions import ClientError
 from organizer import utils
 
 
-class OrgObject(object):
-
-    def __init__(self, organization, **kwargs):
-        self.organization_id = organization.id
-        self.master_account_id = organization.master_account_id
-        self.name = kwargs['name']
-        self.id = kwargs.get('id')
-        self.parent_id = kwargs.get('parent_id')
-
-    def dump(self):
-        org_object_dump = dict()
-        org_object_dump.update(vars(self).items())
-        return org_object_dump
-
-
-class OrganizationalUnit(OrgObject):
-
-    def __init__(self, *args, **kwargs):
-        super(OrganizationalUnit, self).__init__(*args, **kwargs)
-
-
-class OrgAccount(OrgObject):
-
-    def __init__(self, *args, **kwargs):
-        super(OrgAccount, self).__init__(*args, **kwargs)
-        self.email = kwargs['email']
-        self.aliases = kwargs.get('aliases', [])
-        self.credentials = {}
-
-    def load_credentials(self, access_role):
-        self.credentials = utils.assume_role_in_account(self.id, access_role)
-
-    def dump(self):
-        account_dump = super(OrgAccount, self).dump()
-        account_dump.update(dict(credentials={}))
-        return account_dump
-
-
 class Org(object):
 
     def __init__(self, master_account_id, org_access_role, **kwargs):
@@ -284,24 +246,40 @@ class Org(object):
             account_list += self.list_accounts_in_ou(ou)
         return account_list
 
-    # # GONE?
-    # def list_accounts_in_ou_by_name(self, ou):
-    #     ou_id = self.get_org_unit_id(ou)
-    #     return [a.name for a in self.accounts if a.parent_id == ou_id]
 
-    # # GONE?
-    # def list_accounts_in_ou_by_id(self, ou):
-    #     ou_id = self.get_org_unit_id(ou)
-    #     return [a.id for a in self.accounts if a.parent_id == ou_id]
+class OrgObject(object):
 
-    # # GONE
-    # def list_accounts_in_ou_recursive_by_name(self, ou):
-    #     ou_id = self.get_org_unit_id(ou)
-    #     response = self.list_accounts_in_ou_recursive(ou_id)
-    #     return [a.name for a in response]
+    def __init__(self, organization, **kwargs):
+        self.organization_id = organization.id
+        self.master_account_id = organization.master_account_id
+        self.name = kwargs['name']
+        self.id = kwargs.get('id')
+        self.parent_id = kwargs.get('parent_id')
 
-    # # GONE
-    # def list_accounts_in_ou_recursive_by_id(self, ou):
-    #     ou_id = self.get_org_unit_id(ou)
-    #     response = self.list_accounts_in_ou_recursive(ou_id)
-    #     return [a.id for a in response]
+    def dump(self):
+        org_object_dump = dict()
+        org_object_dump.update(vars(self).items())
+        return org_object_dump
+
+
+class OrganizationalUnit(OrgObject):
+
+    def __init__(self, *args, **kwargs):
+        super(OrganizationalUnit, self).__init__(*args, **kwargs)
+
+
+class OrgAccount(OrgObject):
+
+    def __init__(self, *args, **kwargs):
+        super(OrgAccount, self).__init__(*args, **kwargs)
+        self.email = kwargs['email']
+        self.aliases = kwargs.get('aliases', [])
+        self.credentials = {}
+
+    def load_credentials(self, access_role):
+        self.credentials = utils.assume_role_in_account(self.id, access_role)
+
+    def dump(self):
+        account_dump = super(OrgAccount, self).dump()
+        account_dump.update(dict(credentials={}))
+        return account_dump

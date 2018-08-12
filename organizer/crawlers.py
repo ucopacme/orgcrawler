@@ -26,7 +26,7 @@ class Crawler(object):
         self.validate_accounts()
         self.regions = kwargs.get('regions') or self.all_regions
         self.validate_regions()
-        self.requests = []
+        self.executions = []
         self.exc_info = None
         self.error = None
 
@@ -82,49 +82,44 @@ class Crawler(object):
             raise self.exc_info[1].with_traceback(self.exc_info[2])
 
     # ISSUES:
-    # rename CrawlerRequest to CrawlerExecution
-    # likewise the Crawler.request attr to Crawler.execution
-    #
-    # add exception handling as with load_account_credentials
-    #
-    # forgo use of *args, just allow **kwargs
+    # should we forgo use of *args, just allow **kwargs?
     #
     def execute(self, payload, *args, **kwargs):
 
-        def run_payload_in_account(account_region_map, request, *args):
+        def run_payload_in_account(account_region_map, execution, *args):
             region = account_region_map['region']
             account = account_region_map['account']
             response = CrawlerResponse(region, account)
             response.timer.start()
             try:
-                response.payload_output = request.payload(region, account, *args)
+                response.payload_output = execution.payload(region, account, *args)
             except Exception as e:
                 response.exc_info = sys.exc_info()
-                request.errors = True
+                execution.errors = True
             response.timer.stop()
-            request.responses.append(response)
+            execution.responses.append(response)
 
         accounts_and_regions = []
         for region in self.regions:
             for account in self.accounts:
                 accounts_and_regions.append(dict(account=account, region=region))
         thread_count = kwargs.get('thread_count', len(self.accounts))
-        request = CrawlerRequest(payload)
-        request.timer.start()
+        execution = CrawlerExecution(payload)
+        execution.timer.start()
         utils.queue_threads(
             accounts_and_regions,
             run_payload_in_account,
-            func_args=(request, *args),
+            func_args=(execution, *args),
             thread_count=thread_count,
         )
-        request.timer.stop()
-        if request.errors:
-            request.handle_errors()
-        self.requests.append(request)
-        return request
+        execution.timer.stop()
+        if execution.errors:
+            execution.handle_errors()
+        self.executions.append(execution)
+        return execution
 
-    def get_request(self, name):
-        return next((r for r in self.requests if r.name == name), None)
+    def get_execution(self, name):
+        return next((r for r in self.executions if r.name == name), None)
 
 
 class CrawlerTimer(object):
@@ -150,7 +145,7 @@ class CrawlerTimer(object):
         )
 
 
-class CrawlerRequest(object):
+class CrawlerExecution(object):
 
     def __init__(self, payload):
         self.payload = payload

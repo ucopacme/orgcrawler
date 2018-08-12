@@ -78,17 +78,17 @@ def test_crawler_response_init():
 
 @mock_sts
 @mock_organizations
-def test_crawler_request_init():
+def test_crawler_execution_init():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
     org.load()
-    request = crawlers.CrawlerRequest(get_account_alias)
-    assert isfunction(request.payload)
-    assert request.name == 'get_account_alias'
-    assert request.responses == []
-    assert isinstance(request.timer, crawlers.CrawlerTimer)
-    assert isinstance(request.dump(), dict)
-    #print(utils.jsonfmt(request.dump()))
+    execution = crawlers.CrawlerExecution(get_account_alias)
+    assert isfunction(execution.payload)
+    assert execution.name == 'get_account_alias'
+    assert execution.responses == []
+    assert isinstance(execution.timer, crawlers.CrawlerTimer)
+    assert isinstance(execution.dump(), dict)
+    #print(utils.jsonfmt(execution.dump()))
     #assert False
 
 
@@ -205,34 +205,34 @@ def test_execute():
     org.load()
     crawler = crawlers.Crawler(org)
     crawler.load_account_credentials()
-    request1= crawler.execute(set_account_alias)
-    request2 = crawler.execute(get_account_alias)
-    assert len(crawler.requests) == 2
-    assert request1 == crawler.requests[0]
-    assert request2 == crawler.requests[1]
-    for request in crawler.requests:
-        assert isinstance(request, crawlers.CrawlerRequest)
-        assert len(request.responses) == len(crawler.accounts) * len(crawler.regions)
-        for response in request.responses:
+    execution1= crawler.execute(set_account_alias)
+    execution2 = crawler.execute(get_account_alias)
+    assert len(crawler.executions) == 2
+    assert execution1 == crawler.executions[0]
+    assert execution2 == crawler.executions[1]
+    for execution in crawler.executions:
+        assert isinstance(execution, crawlers.CrawlerExecution)
+        assert len(execution.responses) == len(crawler.accounts) * len(crawler.regions)
+        for response in execution.responses:
             assert isinstance(response, crawlers.CrawlerResponse)
-    assert crawler.requests[0].name == 'set_account_alias'
-    assert crawler.requests[1].name == 'get_account_alias'
-    for response in crawler.requests[0].responses:
+    assert crawler.executions[0].name == 'set_account_alias'
+    assert crawler.executions[1].name == 'get_account_alias'
+    for response in crawler.executions[0].responses:
         assert response.payload_output is None
-    for response in crawler.requests[1].responses:
+    for response in crawler.executions[1].responses:
         assert isinstance(response.payload_output, list)
         assert response.payload_output[0].startswith('alias-account')
 
     crawler.update_regions(ALL_REGIONS)
-    request3 = crawler.execute(create_mock_bucket, 'mockbucket')
-    assert len(crawler.requests) == 3
-    assert len(request3.responses) == len(crawler.accounts) * len(crawler.regions)
-    for response in request3.responses:
+    execution3 = crawler.execute(create_mock_bucket, 'mockbucket')
+    assert len(crawler.executions) == 3
+    assert len(execution3.responses) == len(crawler.accounts) * len(crawler.regions)
+    for response in execution3.responses:
         assert response.payload_output['ResponseMetadata']['HTTPStatusCode'] == 200
 
-    assert crawler.get_request('set_account_alias') == crawler.requests[0]
-    assert crawler.get_request('get_account_alias') == crawler.requests[1]
-    assert crawler.get_request('create_mock_bucket') == crawler.requests[2]
+    assert crawler.get_execution('set_account_alias') == crawler.executions[0]
+    assert crawler.get_execution('get_account_alias') == crawler.executions[1]
+    assert crawler.get_execution('create_mock_bucket') == crawler.executions[2]
 
     with pytest.raises(SystemExit):
-        bad_request = crawler.execute(bad_payload_func)
+        bad_execution = crawler.execute(bad_payload_func)

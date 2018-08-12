@@ -38,15 +38,15 @@ def test_get_payload_function_from_file():
 @mock_sts
 @mock_organizations
 @mock_iam
-def test_process_request_outputs():
+def test_process_execution_outputs():
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org.load()
     crawler = crawlers.Crawler(org, access_role=ORG_ACCESS_ROLE)
     crawler.load_account_credentials()
     crawler.execute(payloads.set_account_alias)
-    request = crawler.execute(payloads.get_account_aliases)
-    response = orgcrawler.process_request_outputs(request)
+    execution = crawler.execute(payloads.get_account_aliases)
+    response = orgcrawler.process_execution_outputs(execution)
     assert isinstance(response, str)
     aliases = json.loads(response)
     assert isinstance(aliases, list)

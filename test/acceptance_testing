@@ -7,29 +7,28 @@ orgcrawler -r awsauth/OrgAdmin \
   --account-role awsauth/OrgAdmin \
   -f organizer/cli/payloads.py
 
-# should fail
-orgcrawler -r awsauth/OrgAdmin \
-  organizer.cli.payloads.get_account_aliases \
-  --regions-for-service iam \
-  --account-role NoSuchRole
 
-# should fail
-orgcrawler -r NoSuchRole \
-  organizer.cli.payloads.get_account_aliases \
-  --regions-for-service iam \
-  --account-role awsauth/OrgAdmin
-
+#
 # should succeed
+#
+
+# run this from within base project dir
+orgcrawler -r awsauth/OrgAdmin \
+  get_account_aliases \
+  --regions-for-service ec2 \
+  --account-query list_accounts_in_ou_recursive \
+  --account-query-arg ucpath \
+  --account-role awsauth/OrgAdmin \
+  -f organizer/cli/payloads.py
+
 orgcrawler -r awsauth/OrgAdmin \
   organizer.cli.payloads.get_account_aliases \
-  --regions-for-service iam \
-  --account-role awsauth/OrgAdmin
+  --regions-for-service iam
 
 
 orgcrawler -r awsauth/OrgAdmin \
   organizer.cli.payloads.config_resource_counts \
-  --regions us-west-2 \
-  --account-role awsauth/OrgAdmin
+  --regions us-west-2
 
 orgcrawler -r awsauth/OrgAdmin \
   organizer.cli.payloads.config_describe_rules \
@@ -38,7 +37,22 @@ orgcrawler -r awsauth/OrgAdmin \
 orgcrawler -r awsauth/OrgAdmin \
   organizer.cli.payloads.config_describe_recorder_status \
   --regions ap-south-1,ap-southeast-1,ap-southeast-2,ca-central-1,eu-central-1,eu-west-1,eu-west-2,eu-west-3,sa-east-1,us-east-1,us-east-2,us-west-1,us-west-2
+
+
   #--regions ap-northeast-1,ap-northeast-2,ap-south-1,ap-southeast-1,ap-southeast-2,ca-central-1,eu-central-1,eu-west-1,eu-west-2,eu-west-3,sa-east-1,us-east-1,us-east-2,us-west-1,us-west-2
   #--regions us-west-2
 
 
+
+#
+# should fail
+#
+orgcrawler -r awsauth/OrgAdmin \
+  organizer.cli.payloads.get_account_aliases \
+  --regions-for-service iam \
+  --account-role NoSuchRole
+
+orgcrawler -r NoSuchRole \
+  organizer.cli.payloads.get_account_aliases \
+  --regions-for-service iam \
+  --account-role awsauth/OrgAdmin

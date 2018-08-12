@@ -41,9 +41,9 @@ from organizer import crawlers, orgs, utils
 
 
 # ISSUE: not printing account, region names with response outputs
-def process_request_outputs(request):
+def process_execution_outputs(execution):
     collector = []
-    for response in request.responses:
+    for response in execution.responses:
         d = dict(Account=response.account.name)
         d.update(response.payload_output)
         collector.append(d)
@@ -97,8 +97,8 @@ def main():
     org.load()
     crawler = crawlers.Crawler(org, **crawler_args)
     crawler.load_account_credentials()
-    request = crawler.execute(payload)
-    print(process_request_outputs(request))
+    execution = crawler.execute(payload)
+    print(process_execution_outputs(execution))
 
 
 if __name__ == "__main__":

@@ -32,7 +32,7 @@ Load your organization's account and organizational unit resources into your ins
  
 Query your organization's account and organizational unit resources::
 
-  all_accounts = my_org.list_accounts()
+  all_accounts = my_org.list_accounts_by_name()
   all_org_units = my_org.list_org_units()
   test_accounts = my_org.list_accounts_in_ou('testing')
 
