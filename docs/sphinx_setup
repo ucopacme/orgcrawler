@@ -1,0 +1,11 @@
+https://docs.readthedocs.io/en/latest/getting_started.html
+
+::
+
+  pip install -U sphinx sphinx-autobuild
+  cd docs
+  sphinx-quickstart 
+  ll
+  vi index.rst 
+
+During sphinx-quickstart I accepted extentions for autodoc and coverage
