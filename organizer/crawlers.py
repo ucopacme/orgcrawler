@@ -3,7 +3,7 @@ import time
 
 from botocore.exceptions import ClientError
 
-from organizer import utils
+from organizer import utils, orgs
 
 
 DEFAULT_REGION = 'us-east-1'
@@ -11,7 +11,8 @@ DEFAULT_REGION = 'us-east-1'
 
 class Crawler(object):
 
-    # TESTS NOT COMPLETE
+    all_regions = utils.all_regions()
+
     def __init__(self, org, **kwargs):
         """
         kwargs:
@@ -20,47 +21,42 @@ class Crawler(object):
         :regions: string, or list of string
         """
         self.org = org
+        self.access_role = kwargs.get('access_role') or org.access_role
+        self.accounts = kwargs.get('accounts') or org.accounts
+        self.validate_accounts()
+        self.regions = kwargs.get('regions') or self.all_regions
+        self.validate_regions()
+        self.requests = []
         self.exc_info = None
         self.error = None
-        self.requests = []
-        self.access_role = kwargs.get('access_role', org.access_role)
 
-        if 'accounts' in kwargs:
-            if kwargs['accounts'] is None:
-                self.accounts = org.accounts
-            elif isinstance(kwargs['accounts'], str):
-                self.accounts = [org.get_account(kwargs['accounts'])]
-            elif isinstance(kwargs['accounts'], list):
-                self.accounts = [
-                    org.get_account(account) for account in kwargs['accounts']
-                ]
-            else:
-                raise ValueError('keyword argument "accounts" must be list or str')
+    def validate_accounts(self):
+        if isinstance(self.accounts, str) or isinstance(self.accounts, orgs.OrgAccount):
+            self.accounts = [self.accounts]
+        elif not isinstance(self.accounts, list):
+            raise ValueError(
+                'keyword argument "accounts" must be str, list or orgs.OrgAccount'
+            )
+        self.accounts = [self.org.get_account(a) for a in self.accounts]
+
+    def validate_regions(self):
+        if self.regions == 'GLOBAL':
+            self.regions = [DEFAULT_REGION]
         else:
-            self.accounts = org.accounts
-
-        if 'regions' in kwargs:
-            if kwargs['regions'] is None:
-                self.regions = utils.all_regions()
-            elif isinstance(kwargs['regions'], str):
-                self.regions = [kwargs['regions']]
-            elif isinstance(kwargs['regions'], list):
-                if len(kwargs['regions']) == 0:
-                    self.regions = [DEFAULT_REGION]
-                else:
-                    self.regions = kwargs['regions']
-            else:
+            if isinstance(self.regions, str):
+                self.regions = [self.regions]
+            elif not isinstance(self.regions, list):
                 raise ValueError('keyword argument "regions" must be list or str')
-        else:
-            self.regions = utils.all_regions()
+            no_such_regions = [r for r in self.regions if r not in self.all_regions]
+            if no_such_regions:
+                raise ValueError('Invalid regions: {}'.format(', '.join(no_such_regions)))
 
     def get_regions(self):
         return self.regions
 
     def update_regions(self, regions):
         self.regions = regions
-        if len(self.regions) == 0:
-            self.regions.append(DEFAULT_REGION)
+        self.validate_regions()
 
     def load_account_credentials(self):
         def get_credentials_for_account(account, crawler):
@@ -113,7 +109,6 @@ class Crawler(object):
             for account in self.accounts:
                 accounts_and_regions.append(dict(account=account, region=region))
         thread_count = kwargs.get('thread_count', len(self.accounts))
-        # thread_count = kwargs.get('thread_count', len(self.accounts)*len(self.regions))
         request = CrawlerRequest(payload)
         request.timer.start()
         utils.queue_threads(
@@ -172,7 +167,6 @@ class CrawlerRequest(object):
             statistics=self.timer.dump()
         )
 
-    # NO TEST
     def handle_errors(self):
         errors = [response for response in self.responses if response.exc_info]
         exc_info = errors.pop().exc_info

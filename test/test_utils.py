@@ -93,7 +93,7 @@ def test_regions_for_service():
     assert isinstance(regions, list)
     assert 'us-east-1' in regions
     regions = utils.regions_for_service('iam')
-    assert regions ==  []
+    assert regions == 'GLOBAL'
     with pytest.raises(Exception):
         regions = utils.regions_for_service('blee')
     all_regions = utils.all_regions()

@@ -110,7 +110,10 @@ def regions_for_service(service_name):
     s = boto3.session.Session()
     if service_name not in s.get_available_services():
         raise ValueError("'{}' is not a valid AWS service".format(service_name))
-    return s.get_available_regions(service_name)
+    regions = s.get_available_regions(service_name)
+    if len(regions) == 0:
+        regions = 'GLOBAL'
+    return regions
 
 
 def all_regions():

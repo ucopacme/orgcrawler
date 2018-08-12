@@ -40,6 +40,7 @@ from docopt import docopt
 from organizer import crawlers, orgs, utils
 
 
+# ISSUE: not printing account, region names with response outputs
 def process_request_outputs(request):
     collector = []
     for response in request.responses:
