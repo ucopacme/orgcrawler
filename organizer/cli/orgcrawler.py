@@ -69,7 +69,7 @@ def get_payload_function_from_file(file_name, payload_name):
     return getattr(module, payload_name)
 
 
-def main():
+def main():     # pragma: no cover
     args = docopt(__doc__, version=__version__)
 
     if args['--master-account-id'] is None:
@@ -102,5 +102,5 @@ def main():
     print(process_execution_outputs(execution))
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":      # pragma: no cover
     main()

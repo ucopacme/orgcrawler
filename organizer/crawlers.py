@@ -62,13 +62,13 @@ class Crawler(object):
         def get_credentials_for_account(account, crawler):
             try:
                 account.load_credentials(crawler.access_role)
-            except ClientError as e:
+            except ClientError as e:    # pragma: no cover
                 crawler.error = 'cannot assume role {} in account {}: {}'.format(
                     crawler.access_role,
                     account.name,
                     e.response['Error']['Code']
                 )
-            except Exception:
+            except Exception:   # pragma: no cover
                 crawler.exc_info = sys.exc_info()
         utils.queue_threads(
             self.accounts,
@@ -76,14 +76,12 @@ class Crawler(object):
             func_args=(self,),
             thread_count=len(self.accounts)
         )
-        if self.error:
+        if self.error:  # pragma: no cover
             sys.exit(self.error)
-        if self.exc_info:
+        if self.exc_info:   # pragma: no cover
             raise self.exc_info[1].with_traceback(self.exc_info[2])
 
-    # ISSUES:
-    # should we forgo use of *args, just allow **kwargs?
-    #
+    # ISSUES: # should we forgo use of *args, just allow **kwargs?
     def execute(self, payload, *args, **kwargs):
 
         def run_payload_in_account(account_region_map, execution, *args):

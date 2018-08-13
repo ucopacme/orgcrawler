@@ -7,3 +7,4 @@ __pycache__
 .cache/
 .pytest_cache
 .~c9*
+.coverage

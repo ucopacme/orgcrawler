@@ -78,7 +78,7 @@ class Org(object):
                 self.master_account_id,
                 self.access_role,
             )
-        except ClientError as e:
+        except ClientError as e:    # pragma: no cover
             errmsg = 'cannot assume role {} in account {}: {}'.format(
                 self.access_role,
                 self.master_account_id,
@@ -116,7 +116,7 @@ class Org(object):
     def _load_accounts(self):
         response = self.client.list_accounts()
         accounts = response['Accounts']
-        while 'NextToken' in response and response['NextToken']:
+        while 'NextToken' in response and response['NextToken']:    # pragma: no cover
             try:
                 response = self.client.list_accounts(NextToken=response['NextToken'])
                 accounts += response['Accounts']
@@ -152,7 +152,7 @@ class Org(object):
     def _recurse_organization(self, parent_id):
         response = self.client.list_organizational_units_for_parent(ParentId=parent_id)
         org_units = response['OrganizationalUnits']
-        while 'NextToken' in response and response['NextToken']:
+        while 'NextToken' in response and response['NextToken']:    # pragma: no cover
             response = self.client.list_organizational_units_for_parent(
                 ParentId=parent_id,
                 NextToken=response['NextToken']

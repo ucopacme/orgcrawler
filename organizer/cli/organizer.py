@@ -68,7 +68,7 @@ def jsonfmt(obj):
     return utils.jsonfmt(obj, orgs.OrgObject.dump)
 
 
-def main():
+def main():     # pragma: no cover
     args = docopt(__doc__, version=__version__)
     if len(sys.argv) == 1:
         sys.exit(__doc__)
@@ -100,5 +100,5 @@ def main():
         print(formatter(cmd()))
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':      # pragma: no cover
     main()
