@@ -4,7 +4,7 @@
 Script for querying AWS Organization resources
 
 Usage:
-    organizer [-h]
+    organizer [-h][-V]
     organizer [-f format] [-m master_account_id] -r role COMMAND [ARGUMENT]
 
 Arguments:
@@ -13,6 +13,7 @@ Arguments:
 
 Options:
     -h, --help              Print help message
+    -V, --version           Display version info and exit
     -f format               Output format:  "json" or "yaml". [Default: json]
     -m master_account_id    The master account id for the organization
     -r role                 The AWS role name to assume when running organizer
@@ -38,7 +39,7 @@ Available Query Commands:
 
 import sys
 from docopt import docopt
-from organizer import orgs, utils
+from organizer import __version__, orgs, utils
 
 
 _COMMANDS = [
@@ -68,7 +69,7 @@ def jsonfmt(obj):
 
 
 def main():
-    args = docopt(__doc__)
+    args = docopt(__doc__, version=__version__)
     if len(sys.argv) == 1:
         sys.exit(__doc__)
     if args['COMMAND'] not in AVAILABLE_COMMANDS:

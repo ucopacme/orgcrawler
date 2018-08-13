@@ -25,7 +25,7 @@ setup(
     author_email=['agould@ucop.edu', 'eodell@ucop.edu'],
     license='GPLv3',
     classifiers=[
-        'Development Status :: 1 - Planning',
+        'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
         'Intended Audience :: System Administrators',
         'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',

@@ -2,7 +2,7 @@
 
 """
 Usage:
-    orgcrawler  [-h] [-m id] -r role [-a role] [-f file] PAYLOAD [ARGS...]
+    orgcrawler  [-h][-V] [-m id] -r role [-a role] [-f file] PAYLOAD [ARGS...]
                 [--regions csvlist | --regions-for-service name]
                 [--accounts csvlist | --account-query command]
                 [--account-query-arg arg]
@@ -14,6 +14,7 @@ Arguments:
 
 Options:
     -h, --help                  Print help message
+    -V, --version               Display version info and exit
     -m, --master-account-id id  The master account id of the organization
     -r, --master-role role      The IAM role to assume in master account
     -a, --account-role role     The IAM role to assume in organization accounts
@@ -37,7 +38,7 @@ import importlib
 
 from docopt import docopt
 
-from organizer import crawlers, orgs, utils
+from organizer import __version__, crawlers, orgs, utils
 
 
 # ISSUE: not printing account, region names with response outputs
@@ -69,7 +70,7 @@ def get_payload_function_from_file(file_name, payload_name):
 
 
 def main():
-    args = docopt(__doc__)
+    args = docopt(__doc__, version=__version__)
 
     if args['--master-account-id'] is None:
         args['--master-account-id'] = utils.get_master_account_id(args['--master-role'])
