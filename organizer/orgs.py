@@ -11,8 +11,37 @@ from organizer import utils
 
 
 class Org(object):
+    """
+    Data model and methods for querying AWS Organizations resources.
+
+    The Org object is used to retrieve resource attributes for all AWS Accounts
+    and Organizational Units in your AWS Organization.  It provides an API for
+    listing accounts or account attributes based on ancestor organizational
+    unit or other criteria.
+
+    Once loaded, your Org object is cached locally to reduce load time during
+    subsequent use.  Account credentails are not cached.  Cached Org objects
+    time out after a configurable amount of time [Default: 60 minutes].
+
+    Attributes:
+        master_account_id (str): Account Id of the Organization master account.
+        access_role (str): The IAM role to assume when loading Organization
+            resource data.
+        id (str): The Organization resource Id.
+        root_id (str): The root Organizational Unit resource Id.
+        accounts (list(:obj:`OrgAccount`)): List of account in the Organization.
+        org_units (list(:obj:`OrganizationalUnit`)): List of organizational
+            units in the Organization.
+
+    Example:
+        my_org = organizer.orgs.Org('123456789012', 'myOrgMasterRole')
+        my_org.load()
+        all_accounts = my_org.list_accounts_by_name()
+
+    """
 
     def __init__(self, master_account_id, org_access_role, **kwargs):
+        # TODO: make client and cache attrs private
         self.master_account_id = master_account_id
         self.access_role = org_access_role
         self.id = None

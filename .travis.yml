@@ -11,5 +11,5 @@ install:
   - pip install -r requirements.txt
 script: 
   - flake8 organizer
-  - pytest --cov=organizer --cov-report term-missing --no-print-log
+  - pytest
 
