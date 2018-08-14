@@ -23,7 +23,9 @@ class Org(object):
     subsequent use.  Account credentails are not cached.  Cached Org objects
     time out after a configurable amount of time [Default: 60 minutes].
 
-    Attributes:
+    Generating the Org instance
+    
+    Args:
         master_account_id (str): Account Id of the Organization master account.
         access_role (str): The IAM role to assume when loading Organization
             resource data.
@@ -33,30 +35,27 @@ class Org(object):
         org_units (list(:obj:`OrganizationalUnit`)): List of organizational
             units in the Organization.
 
-    Example:
-        my_org = organizer.orgs.Org('123456789012', 'myOrgMasterRole')
-        my_org.load()
-        all_accounts = my_org.list_accounts_by_name()
-
     """
 
     def __init__(self, master_account_id, org_access_role, **kwargs):
-        # TODO: make client and cache attrs private
+        """
+
+        """
         self.master_account_id = master_account_id
         self.access_role = org_access_role
         self.id = None
         self.root_id = None
-        self.client = None
-        self.cache_dir = os.path.expanduser(
-            kwargs.get('cache_dir', '~/.aws/organizer-cache')
-        )
-        self.cache_file = os.path.join(
-            self.cache_dir,
-            kwargs.get('cache_file', '-'.join(['cache_file', master_account_id])),
-        )
-        self.cache_file_max_age = kwargs.get('cache_file_max_age', 60)
         self.accounts = []
         self.org_units = []
+        self._client = None
+        self._cache_file_max_age = kwargs.get('cache_file_max_age', 60)
+        self._cache_dir = os.path.expanduser(
+            kwargs.get('cache_dir', '~/.aws/organizer-cache')
+        )
+        self._cache_file = os.path.join(
+            self._cache_dir,
+            kwargs.get('cache_file', '-'.join(['cache_file', master_account_id])),
+        )
 
     def dump_accounts(self, account_list=None):
         if not account_list:
@@ -69,7 +68,7 @@ class Org(object):
     def dump(self):
         org_dump = dict()
         org_dump.update(vars(self).items())
-        org_dump.update(dict(client=None))
+        org_dump.update(dict(_client=None))
         org_dump['accounts'] = self.dump_accounts()
         org_dump['org_units'] = self.dump_org_units()
         return org_dump
@@ -98,7 +97,7 @@ class Org(object):
             self._save_cached_org_to_file()
 
     def _load_client(self):
-        self.client = self._get_org_client()
+        self._client = self._get_org_client()
 
     def _get_org_client(self):
         """ Returns a boto3 client for Organizations object """
@@ -117,14 +116,14 @@ class Org(object):
         return boto3.client('organizations', **credentials)
 
     def _get_cached_org_from_file(self):
-        if not os.path.isfile(self.cache_file):
+        if not os.path.isfile(self._cache_file):
             raise RuntimeError('Cache file not found')
-        cache_file_mod_time = datetime.fromtimestamp(os.stat(self.cache_file).st_mtime)
+        cache_file_mod_time = datetime.fromtimestamp(os.stat(self._cache_file).st_mtime)
         now = datetime.today()
-        max_delay = timedelta(minutes=self.cache_file_max_age)
+        max_delay = timedelta(minutes=self._cache_file_max_age)
         if now - cache_file_mod_time > max_delay:
             raise RuntimeError('Cache file too old')
-        with open(self.cache_file, 'rb') as pf:
+        with open(self._cache_file, 'rb') as pf:
             return pickle.load(pf)
 
     def _load_org_dump(self, org_dump):
@@ -138,16 +137,16 @@ class Org(object):
         ]
 
     def _load_org(self):
-        response = self.client.describe_organization()
+        response = self._client.describe_organization()
         self.id = response['Organization']['Id']
-        self.root_id = self.client.list_roots()['Roots'][0]['Id']
+        self.root_id = self._client.list_roots()['Roots'][0]['Id']
 
     def _load_accounts(self):
-        response = self.client.list_accounts()
+        response = self._client.list_accounts()
         accounts = response['Accounts']
         while 'NextToken' in response and response['NextToken']:    # pragma: no cover
             try:
-                response = self.client.list_accounts(NextToken=response['NextToken'])
+                response = self._client.list_accounts(NextToken=response['NextToken'])
                 accounts += response['Accounts']
             except ClientError as e:
                 if e.response['Error']['Code'] == 'TooManyRequestsException':
@@ -158,7 +157,7 @@ class Org(object):
         # use threading to query all accounts
         def make_org_account_object(account, org):
             # thread worker function: get parent_id and create OrgAccount object
-            response = org.client.list_parents(ChildId=account['Id'])
+            response = org._client.list_parents(ChildId=account['Id'])
             parent_id = response['Parents'][0]['Id']
             org_account = OrgAccount(
                 org,
@@ -179,10 +178,10 @@ class Org(object):
         self._recurse_organization(self.root_id)
 
     def _recurse_organization(self, parent_id):
-        response = self.client.list_organizational_units_for_parent(ParentId=parent_id)
+        response = self._client.list_organizational_units_for_parent(ParentId=parent_id)
         org_units = response['OrganizationalUnits']
         while 'NextToken' in response and response['NextToken']:    # pragma: no cover
-            response = self.client.list_organizational_units_for_parent(
+            response = self._client.list_organizational_units_for_parent(
                 ParentId=parent_id,
                 NextToken=response['NextToken']
             )
@@ -199,8 +198,8 @@ class Org(object):
             self._recurse_organization(ou['Id'])
 
     def _save_cached_org_to_file(self):
-        os.makedirs(self.cache_dir, 0o700, exist_ok=True)
-        with open(self.cache_file, 'wb') as pf:
+        os.makedirs(self._cache_dir, 0o700, exist_ok=True)
+        with open(self._cache_file, 'wb') as pf:
             pickle.dump(self.dump(), pf)
 
     # Query methods
