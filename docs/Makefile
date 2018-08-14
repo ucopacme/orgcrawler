@@ -7,6 +7,10 @@ SPHINXBUILD   = sphinx-build
 SPHINXPROJ    = Organizer
 SOURCEDIR     = .
 BUILDDIR      = _build
+APIDOCBUILD      = sphinx-apidoc
+APIDOCHEADER     = 'Organizer API'
+APIDOCBUILDDIR   = $(SOURCEDIR)/_api
+APIDOCSOURCEDIR  = ../organizer
 
 # Put it first so that "make" without argument is like "make help".
 help:
@@ -14,7 +18,11 @@ help:
 
 .PHONY: help Makefile
 
+apidoc:
+	@rm -r $(APIDOCBUILDDIR)
+	@$(APIDOCBUILD) -H $(APIDOCHEADER) -M -e -o $(APIDOCBUILDDIR) $(APIDOCSOURCEDIR)
+
 # Catch-all target: route all unknown targets to Sphinx using the new
 # "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
-%: Makefile
+%: apidoc Makefile
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)

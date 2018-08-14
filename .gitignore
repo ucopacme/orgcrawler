@@ -8,3 +8,5 @@ __pycache__
 .pytest_cache
 .~c9*
 .coverage
+.coverage.*
+notes
