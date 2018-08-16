@@ -103,8 +103,9 @@ def build_mock_org(spec):
     mock_org_from_spec(client, root_id, root_id, yaml.load(spec)['root'])
     return (org_id, root_id)
 
-def clean_up():
-    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+def clean_up(org=None):
+    if org is None:
+        org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     if os.path.isdir(org._cache_dir):
         shutil.rmtree(org._cache_dir)
 
@@ -184,7 +185,6 @@ def test_org_objects():
     assert ou.id == 'o-jfk0'
     assert ou.parent_id == org.root_id
 
-
 @mock_sts
 @mock_organizations
 def test_load_accounts():
@@ -240,10 +240,9 @@ def test_org_cache():
     loaded_dump = org._get_cached_org_from_file()
     assert loaded_dump == org_dump
 
-    org_from_pickle_file = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    org_from_pickle_file._load_org_dump(loaded_dump)
-    org._client = None
-    assert org.dump() == org_from_pickle_file.dump()
+    org_from_cache = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org_from_cache._load_org_dump(loaded_dump)
+    assert org.dump() == org_from_cache.dump()
 
 @mock_sts
 @mock_organizations
@@ -261,9 +260,9 @@ def test_load():
     assert len(org.accounts) == 3
     assert len(org.org_units) == 6
 
-    org_from_pickle_file = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    org_from_pickle_file.load()
-    assert org.dump() == org_from_pickle_file.dump()
+    org_from_cache = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org_from_cache.load()
+    assert org.dump() == org_from_cache.dump()
     clean_up()
 
  

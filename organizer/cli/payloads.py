@@ -1,25 +1,25 @@
 import boto3
 
 
-def set_account_alias(region, account):
+def set_account_alias(region, account):     # pragma: no cover
     client = boto3.client('iam', region_name=region, **account.credentials)
     client.create_account_alias(AccountAlias=account.name)
     return
 
 
-def get_account_aliases(region, account):
+def get_account_aliases(region, account):       # pragma: no cover
     client = boto3.client('iam', region_name=region, **account.credentials)
     response = client.list_account_aliases()
     return dict(Aliases=', '.join(response['AccountAliases']))
 
 
-def list_buckets(region, account):
+def list_buckets(region, account):      # pragma: no cover
     client = boto3.client('s3', region_name=region, **account.credentials)
     response = client.list_buckets()
     return dict(Buckets=[b['Name'] for b in response['Buckets']])
 
 
-def list_hosted_zones(region, account):
+def list_hosted_zones(region, account):     # pragma: no cover
     client = boto3.client('route53', region_name=region, **account.credentials)
     response = client.list_hosted_zones()
     hosted_zones = []
@@ -33,19 +33,19 @@ def list_hosted_zones(region, account):
     return dict(HostedZones=hosted_zones)
 
 
-def config_resource_counts(region, account):
+def config_resource_counts(region, account):        # pragma: no cover
     client = boto3.client('config', region_name=region, **account.credentials)
     response = client.get_discovered_resource_counts()
     return dict(resourceCounts=response['resourceCounts'])
 
 
-def config_describe_rules(region, account):
+def config_describe_rules(region, account):     # pragma: no cover
     client = boto3.client('config', region_name=region, **account.credentials)
     response = client.describe_config_rules()
     return dict(ConfigRules=response['ConfigRules'])
 
 
-def config_describe_recorder_status(region, account):
+def config_describe_recorder_status(region, account):       # pragma: no cover
     client = boto3.client('config', region_name=region, **account.credentials)
     response = client.describe_configuration_recorder_status()
     return dict(ConfigurationRecordersStatus=response['ConfigurationRecordersStatus'])

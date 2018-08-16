@@ -52,16 +52,13 @@ def process_execution_outputs(execution):
 
 
 def get_payload_function_from_string(payload_name):
-    module_name, unused, function_name = payload_name.rpartition('.')
-    if module_name:
-        module = importlib.import_module(module_name)
-        return getattr(module, function_name)
-    return eval(payload_name)
+    module_name, _, function_name = payload_name.rpartition('.')
+    module = importlib.import_module(module_name)
+    return getattr(module, function_name)
 
 
 def get_payload_function_from_file(file_name, payload_name):
-    if file_name.startswith('~'):
-        file_name = os.path.expanduser(file_name)
+    file_name = os.path.expanduser(file_name)
     module_dir = os.path.dirname(file_name)
     sys.path.append(os.path.abspath(module_dir))
     module_name = os.path.basename(file_name).replace('.py', '')
