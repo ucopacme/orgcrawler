@@ -11,7 +11,6 @@ Welcome to Organizer's documentation!
    :caption: Contents:
 
    getting_started
-   _api/modules
 
 
 Indices and tables
