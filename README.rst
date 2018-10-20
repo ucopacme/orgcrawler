@@ -1,5 +1,5 @@
-Organizer
-=========
+Getting Started with Organizer
+==============================
 
 A toolset for managing AWS resources across an organization
 

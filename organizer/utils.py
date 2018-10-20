@@ -2,7 +2,7 @@ import sys
 import threading
 try:
     import queue
-except ImportError:
+except ImportError:     # pragma: no cover
     import Queue as queue
 import json
 import yaml
@@ -15,8 +15,7 @@ from botocore.exceptions import ClientError
 
 @singledispatch
 def to_serializable(val):
-    """Used by default."""
-    return str(val)
+    return str(val)     # pragma: no cover
 
 
 @to_serializable.register(datetime)
@@ -71,11 +70,11 @@ def get_master_account_id(role_name=None):
     sts_client = boto3.client('sts')
     try:
         account_id = sts_client.get_caller_identity()['Account']
-    except ClientError as e:
+    except ClientError as e:    # pragma: no cover
         sys.exit('Cant obtain master account id: {}'.format(e.response['Error']['Code']))
     try:
         credentials = assume_role_in_account(account_id, role_name)
-    except ClientError as e:
+    except ClientError as e:    # pragma: no cover
         errmsg = 'cannot assume role {} in account {}: {}'.format(
             role_name,
             account_id,

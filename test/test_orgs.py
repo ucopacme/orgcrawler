@@ -103,10 +103,11 @@ def build_mock_org(spec):
     mock_org_from_spec(client, root_id, root_id, yaml.load(spec)['root'])
     return (org_id, root_id)
 
-def clean_up():
-    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    if os.path.isdir(org.cache_dir):
-        shutil.rmtree(org.cache_dir)
+def clean_up(org=None):
+    if org is None:
+        org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    if os.path.isdir(org._cache_dir):
+        shutil.rmtree(org._cache_dir)
 
 @mock_organizations
 def test_org():
@@ -128,7 +129,7 @@ def test__get_org_client():
 def test_load_client():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org._load_client()
-    assert str(type(org.client)).find('botocore.client.Organizations') > 0
+    assert str(type(org._client)).find('botocore.client.Organizations') > 0
 
 @mock_sts
 @mock_organizations
@@ -184,7 +185,6 @@ def test_org_objects():
     assert ou.id == 'o-jfk0'
     assert ou.parent_id == org.root_id
 
-
 @mock_sts
 @mock_organizations
 def test_load_accounts():
@@ -221,16 +221,16 @@ def test_org_cache():
     org._load_org_units()
 
     org._save_cached_org_to_file()
-    assert os.path.exists(org.cache_file)
+    assert os.path.exists(org._cache_file)
 
-    os.remove(org.cache_file)
+    os.remove(org._cache_file)
     with pytest.raises(RuntimeError) as e:
         loaded_dump = org._get_cached_org_from_file()
     assert str(e.value) == 'Cache file not found'
 
     org._save_cached_org_to_file()
-    timestamp = os.path.getmtime(org.cache_file) - 3600
-    os.utime(org.cache_file,(timestamp,timestamp))
+    timestamp = os.path.getmtime(org._cache_file) - 3600
+    os.utime(org._cache_file,(timestamp,timestamp))
     with pytest.raises(RuntimeError) as e:
         loaded_dump = org._get_cached_org_from_file()
     assert str(e.value) == 'Cache file too old'
@@ -240,10 +240,9 @@ def test_org_cache():
     loaded_dump = org._get_cached_org_from_file()
     assert loaded_dump == org_dump
 
-    org_from_pickle_file = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    org_from_pickle_file._load_org_dump(loaded_dump)
-    org.client = None
-    assert org.dump() == org_from_pickle_file.dump()
+    org_from_cache = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org_from_cache._load_org_dump(loaded_dump)
+    assert org.dump() == org_from_cache.dump()
 
 @mock_sts
 @mock_organizations
@@ -251,19 +250,19 @@ def test_load():
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     clean_up()
-    assert not os.path.exists(org.cache_dir)
-    assert not os.path.exists(org.cache_file)
+    assert not os.path.exists(org._cache_dir)
+    assert not os.path.exists(org._cache_file)
     org.load()
-    print(org.cache_file)
-    assert os.path.exists(org.cache_file)
+    print(org._cache_file)
+    assert os.path.exists(org._cache_file)
     assert org.id == org_id
     assert org.root_id == root_id
     assert len(org.accounts) == 3
     assert len(org.org_units) == 6
 
-    org_from_pickle_file = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    org_from_pickle_file.load()
-    assert org.dump() == org_from_pickle_file.dump()
+    org_from_cache = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org_from_cache.load()
+    assert org.dump() == org_from_cache.dump()
     clean_up()
 
  
@@ -378,7 +377,7 @@ def test_get_account_id_by_name():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org.load()
     account_id = org.get_account_id_by_name('account01')
-    accounts_by_boto_client = org.client.list_accounts()['Accounts']
+    accounts_by_boto_client = org._client.list_accounts()['Accounts']
     assert account_id == next((
         a['Id'] for a in accounts_by_boto_client if a['Name'] == 'account01'
     ), None)
@@ -393,7 +392,7 @@ def test_get_account_name_by_id():
     org.load()
     account_id = org.get_account_id_by_name('account01')
     account_name = org.get_account_name_by_id(account_id)
-    accounts_by_boto_client = org.client.list_accounts()['Accounts']
+    accounts_by_boto_client = org._client.list_accounts()['Accounts']
     assert account_name == next((
         a['Name'] for a in accounts_by_boto_client if a['Id'] == account_id
     ), None)
@@ -434,7 +433,7 @@ def test_list_accounts_in_ou():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org.load()
     response = org.list_accounts_in_ou(root_id)
-    accounts_by_boto_client = org.client.list_accounts_for_parent(
+    accounts_by_boto_client = org._client.list_accounts_for_parent(
         ParentId=root_id
     )['Accounts']
     for account in response:
@@ -443,7 +442,7 @@ def test_list_accounts_in_ou():
             if a['Name'] == account.name
         ), None)
     response = org.list_accounts_in_ou('ou02')
-    accounts_by_boto_client = org.client.list_accounts_for_parent(
+    accounts_by_boto_client = org._client.list_accounts_for_parent(
         ParentId=org.get_org_unit_id('ou02')
     )['Accounts']
     for account in response:
@@ -461,7 +460,7 @@ def test_list_org_units_in_ou():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org.load()
     response = org.list_org_units_in_ou(root_id)
-    ou_by_boto_client = org.client.list_organizational_units_for_parent(
+    ou_by_boto_client = org._client.list_organizational_units_for_parent(
         ParentId=root_id
     )['OrganizationalUnits']
     for org_unit in response:
@@ -470,7 +469,7 @@ def test_list_org_units_in_ou():
             if ou['Name'] == org_unit.name
         ), None)
     response = org.list_org_units_in_ou('ou02')
-    ou_by_boto_client = org.client.list_organizational_units_for_parent(
+    ou_by_boto_client = org._client.list_organizational_units_for_parent(
         ParentId=org.get_org_unit_id('ou02')
     )['OrganizationalUnits']
     for org_unit in response:

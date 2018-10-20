@@ -2,7 +2,7 @@
 
 """
 Usage:
-    orgcrawler  [-h] [-m id] -r role [-a role] [-f file] PAYLOAD [ARGS...]
+    orgcrawler  [-h][-V] [-m id] -r role [-a role] [-f file] PAYLOAD [ARGS...]
                 [--regions csvlist | --regions-for-service name]
                 [--accounts csvlist | --account-query command]
                 [--account-query-arg arg]
@@ -14,6 +14,7 @@ Arguments:
 
 Options:
     -h, --help                  Print help message
+    -V, --version               Display version info and exit
     -m, --master-account-id id  The master account id of the organization
     -r, --master-role role      The IAM role to assume in master account
     -a, --account-role role     The IAM role to assume in organization accounts
@@ -37,7 +38,7 @@ import importlib
 
 from docopt import docopt
 
-from organizer import crawlers, orgs, utils
+from organizer import __version__, crawlers, orgs, utils
 
 
 # ISSUE: not printing account, region names with response outputs
@@ -51,16 +52,13 @@ def process_execution_outputs(execution):
 
 
 def get_payload_function_from_string(payload_name):
-    module_name, unused, function_name = payload_name.rpartition('.')
-    if module_name:
-        module = importlib.import_module(module_name)
-        return getattr(module, function_name)
-    return eval(payload_name)
+    module_name, _, function_name = payload_name.rpartition('.')
+    module = importlib.import_module(module_name)
+    return getattr(module, function_name)
 
 
 def get_payload_function_from_file(file_name, payload_name):
-    if file_name.startswith('~'):
-        file_name = os.path.expanduser(file_name)
+    file_name = os.path.expanduser(file_name)
     module_dir = os.path.dirname(file_name)
     sys.path.append(os.path.abspath(module_dir))
     module_name = os.path.basename(file_name).replace('.py', '')
@@ -68,8 +66,8 @@ def get_payload_function_from_file(file_name, payload_name):
     return getattr(module, payload_name)
 
 
-def main():
-    args = docopt(__doc__)
+def main():     # pragma: no cover
+    args = docopt(__doc__, version=__version__)
 
     if args['--master-account-id'] is None:
         args['--master-account-id'] = utils.get_master_account_id(args['--master-role'])
@@ -101,5 +99,5 @@ def main():
     print(process_execution_outputs(execution))
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":      # pragma: no cover
     main()
