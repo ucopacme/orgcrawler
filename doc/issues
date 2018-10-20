@@ -1,0 +1,43 @@
+(python3.6) agould@horus:~/git-repos/github/ucopacme/organizer/test> time organizer awsauth/OrgAdmin list_accounts
+Exception in thread Thread-24:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.6/threading.py", line 916, in _bootstrap_inner
+    self.run()
+  File "/usr/local/lib/python3.6/threading.py", line 864, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/agould/git-repos/github/ucopacme/organizer/organizer/utils.py", line 64, in worker
+    func(item, *args)
+  File "/home/agould/git-repos/github/ucopacme/organizer/organizer/orgs.py", line 151, in make_org_account_object
+    response = org.client.list_parents(ChildId=account['Id'])
+  File "/home/agould/python-venv/python3.6/lib/python3.6/site-packages/botocore/client.py", line 314, in _api_call
+    return self._make_api_call(operation_name, kwargs)
+  File "/home/agould/python-venv/python3.6/lib/python3.6/site-packages/botocore/client.py", line 612, in _make_api_call
+    raise error_class(parsed_response, operation_name)
+botocore.errorfactory.TooManyRequestsException: An error occurred (TooManyRequestsException) when calling the ListParents operation (reached max retries: 4): AWS Organizations can't complete your request because another request is already in progress. Try again later.
+
+^CTraceback (most recent call last):
+  File "/home/agould/git-repos/github/ucopacme/organizer/organizer/orgs.py", line 95, in load
+    org_dump = self._load_org_pickle_from_file()
+  File "/home/agould/git-repos/github/ucopacme/organizer/organizer/orgs.py", line 111, in _load_org_pickle_from_file
+    raise RuntimeError('Pickle file not found')
+RuntimeError: Pickle file not found
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/agould/python-venv/python3.6/bin/organizer", line 11, in <module>
+    load_entry_point('organizer', 'console_scripts', 'organizer')()
+  File "/home/agould/git-repos/github/ucopacme/organizer/organizer/cli.py", line 90, in main
+    org.load()
+  File "/home/agould/git-repos/github/ucopacme/organizer/organizer/orgs.py", line 101, in load
+    self._load_accounts()
+  File "/home/agould/git-repos/github/ucopacme/organizer/organizer/orgs.py", line 165, in _load_accounts
+    thread_count=len(accounts)
+  File "/home/agould/git-repos/github/ucopacme/organizer/organizer/utils.py", line 73, in queue_threads
+    q.join()
+  File "/usr/local/lib/python3.6/queue.py", line 83, in join
+    self.all_tasks_done.wait()
+  File "/usr/local/lib/python3.6/threading.py", line 295, in wait
+    waiter.acquire()
+KeyboardInterrupt
+

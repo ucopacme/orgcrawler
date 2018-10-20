@@ -37,7 +37,13 @@ def assume_role_in_account(account_id, role_name):
             errmsg = 'cannot assume role {} in account {}: AccessDenied'.format(
                 role_name, account_id
             )
-            sys.exit(errmsg)
+        elif e.response['Error']['Code'] == 'ExpiredToken':
+            errmsg = 'cannot assume role {} in account {}: ExpiredToken'.format(
+                role_name, account_id
+            )
+        else:
+            raise e
+        sys.exit(errmsg)
     return dict(
         aws_access_key_id=credentials['AccessKeyId'],
         aws_secret_access_key=credentials['SecretAccessKey'],
@@ -47,7 +53,10 @@ def assume_role_in_account(account_id, role_name):
 
 def get_master_account_id(role_name=None):
     sts_client = boto3.client('sts')
-    account_id = sts_client.get_caller_identity()['Account']
+    try:
+        account_id = sts_client.get_caller_identity()['Account']
+    except ClientError as e:
+        sys.exit('Cant obtain master account id: {}'.format(e.response['Error']['Code']))
     credentials = assume_role_in_account(account_id, role_name)
     client = boto3.client('organizations', **credentials)
     try:

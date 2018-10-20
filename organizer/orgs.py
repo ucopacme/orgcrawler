@@ -1,4 +1,8 @@
+import os
+import pickle
 import json
+from datetime import datetime, timedelta
+
 import boto3
 from botocore.exceptions import ClientError
 
@@ -11,36 +15,13 @@ class OrgObject(object):
         self.organization_id = organization.id
         self.master_account_id = organization.master_account_id
         self.name = kwargs['name']
-        self.id = kwargs.get('object_id')
+        self.id = kwargs.get('id')
         self.parent_id = kwargs.get('parent_id')
 
     def dump(self):
-        return dict(
-            Name=self.name,
-            Id=self.id,
-            ParentId=self.parent_id,
-        )
-
-
-class OrgAccount(OrgObject):
-
-    def __init__(self, *args, **kwargs):
-        super(OrgAccount, self).__init__(*args, **kwargs)
-        self.email = kwargs['email']
-        self.aliases = []
-        self.credentials = {}
-
-    def dump(self):
-        return dict(
-            Name=self.name,
-            Id=self.id,
-            Email=self.email,
-            ParentId=self.parent_id,
-            Aliases=', '.join(self.aliases),
-        )
-
-    def load_credentials(self, access_role):
-        self.credentials = utils.assume_role_in_account(self.id, access_role)
+        org_object_dump = dict()
+        org_object_dump.update(vars(self).items())
+        return org_object_dump
 
 
 class OrganizationalUnit(OrgObject):
@@ -49,39 +30,49 @@ class OrganizationalUnit(OrgObject):
         super(OrganizationalUnit, self).__init__(*args, **kwargs)
 
 
+class OrgAccount(OrgObject):
+
+    def __init__(self, *args, **kwargs):
+        super(OrgAccount, self).__init__(*args, **kwargs)
+        self.email = kwargs['email']
+        self.aliases = kwargs.get('aliases', [])
+        self.credentials = {}
+
+    def load_credentials(self, access_role):
+        self.credentials = utils.assume_role_in_account(self.id, access_role)
+
+    def dump(self):
+        account_dump = super(OrgAccount, self).dump()
+        account_dump.update(dict(credentials={}))
+        return account_dump
+
+
 class Org(object):
 
-    def __init__(self, master_account_id, org_access_role):
+    def __init__(self, master_account_id, org_access_role, **kwargs):
         self.master_account_id = master_account_id
         self.access_role = org_access_role
         self.id = None
         self.root_id = None
+        self.client = None
+        self.cache_dir = os.path.expanduser(
+            kwargs.get('cache_dir', '~/.aws/organizer-cache')
+        )
+        self.cache_file = os.path.join(
+            self.cache_dir,
+            kwargs.get('cache_file', '-'.join(['cache_file', master_account_id])),
+        )
+        self.cache_file_max_age = kwargs.get('cache_file_max_age', 60)
         self.accounts = []
         self.org_units = []
-
-    def load(self):
-        """
-        Make boto3 client calls to populate the Org object's Account and
-        OrganizationalUnit resource data
-        """
-        self._load_client()
-        self._load_org()
-        self.accounts = []
-        self._load_accounts()
-        self.org_units = []
-        self._load_org_units()
 
     def dump(self):
-        """
-        Return loaded Org object as dictionary
-        """
-        return dict(
-            Id=self.id,
-            MasterAccountId=self.master_account_id,
-            RootId=self.root_id,
-            Accounts=[a.dump() for a in self.accounts],
-            OrganizationalUnits=[ou.dump() for ou in self.org_units],
-        )
+        org_dump = dict()
+        org_dump.update(vars(self).items())
+        org_dump['accounts'] = [a.dump() for a in self.accounts]
+        org_dump['org_units'] = [ou.dump() for ou in self.org_units]
+        org_dump.update(dict(client=None))
+        return org_dump
 
     def dump_json(self):
         """
@@ -89,8 +80,54 @@ class Org(object):
         """
         return json.dumps(self.dump(), indent=4, separators=(',', ': '))
 
+    def load(self):
+        """
+        Make boto3 client calls to populate the Org object's Account and
+        OrganizationalUnit resource data
+        """
+        self._load_client()
+        try:
+            org_dump = self._get_cached_org_from_file()
+            self._load_org_dump(org_dump)
+        except RuntimeError as e:
+            self._load_org()
+            self.accounts = []
+            self._load_accounts()
+            self.org_units = []
+            self._load_org_units()
+            self._save_cached_org_to_file()
+
     def _load_client(self):
-        self.client = self.get_org_client()
+        self.client = self._get_org_client()
+
+    def _get_org_client(self):
+        """ Returns a boto3 client for Organizations object """
+        credentials = utils.assume_role_in_account(
+            self.master_account_id,
+            self.access_role
+        )
+        return boto3.client('organizations', **credentials)
+
+    def _get_cached_org_from_file(self):
+        if not os.path.isfile(self.cache_file):
+            raise RuntimeError('Cache file not found')
+        cache_file_mod_time = datetime.fromtimestamp(os.stat(self.cache_file).st_mtime)
+        now = datetime.today()
+        max_delay = timedelta(minutes=self.cache_file_max_age)
+        if now - cache_file_mod_time > max_delay:
+            raise RuntimeError('Cache file too old')
+        with open(self.cache_file, 'rb') as pf:
+            return pickle.load(pf)
+
+    def _load_org_dump(self, org_dump):
+        self.id = org_dump['id']
+        self.root_id = org_dump['root_id']
+        self.accounts = [
+            OrgAccount(self, **account) for account in org_dump['accounts']
+        ]
+        self.org_units = [
+            OrganizationalUnit(self, **org_unit) for org_unit in org_dump['org_units']
+        ]
 
     def _load_org(self):
         response = self.client.describe_organization()
@@ -118,7 +155,7 @@ class Org(object):
             org_account = OrgAccount(
                 org,
                 name=account['Name'],
-                object_id=account['Id'],
+                id=account['Id'],
                 email=account['Email'],
                 parent_id=parent_id,
             )
@@ -147,19 +184,18 @@ class Org(object):
                 OrganizationalUnit(
                     self,
                     name=ou['Name'],
-                    object_id=ou['Id'],
+                    id=ou['Id'],
                     parent_id=parent_id,
                 )
             )
             self._recurse_organization(ou['Id'])
 
-    def get_org_client(self):
-        """ Returns a boto3 client for Organizations object """
-        credentials = utils.assume_role_in_account(
-            self.master_account_id,
-            self.access_role
-        )
-        return boto3.client('organizations', **credentials)
+    def _save_cached_org_to_file(self):
+        os.makedirs(self.cache_dir, 0o700, exist_ok=True)
+        with open(self.cache_file, 'wb') as pf:
+            pickle.dump(self.dump(), pf)
+
+    # Query methods
 
     def list_accounts(self):
         return [dict(Name=a.name, Id=a.id) for a in self.accounts]
@@ -188,13 +224,23 @@ class Org(object):
     def get_org_unit_id_by_name(self, name):
         return next((ou.id for ou in self.org_units if ou.name == name), None)
 
+    def _check_if_org_unit_name(self, ou_id):
+        if ou_id == 'root':
+            return self.root_id
+        elif ou_id in self.list_org_units_by_name():
+            return self.get_org_unit_id_by_name(ou_id)
+        return ou_id
+
     def list_accounts_in_ou(self, ou_id):
+        ou_id = self._check_if_org_unit_name(ou_id)
         return [dict(Name=a.name, Id=a.id) for a in self.accounts if a.parent_id == ou_id]
 
     def list_accounts_in_ou_by_name(self, ou_id):
+        ou_id = self._check_if_org_unit_name(ou_id)
         return [a.name for a in self.accounts if a.parent_id == ou_id]
 
     def list_accounts_in_ou_by_id(self, ou_id):
+        ou_id = self._check_if_org_unit_name(ou_id)
         return [a.id for a in self.accounts if a.parent_id == ou_id]
 
     def _recurse_org_units_under_ou(self, parent_id):
@@ -207,15 +253,18 @@ class Org(object):
         return ou_id_list
 
     def list_accounts_under_ou(self, ou_id):
+        ou_id = self._check_if_org_unit_name(ou_id)
         account_list = self.list_accounts_in_ou(ou_id)
         for ou_id in self._recurse_org_units_under_ou(ou_id):
             account_list += self.list_accounts_in_ou(ou_id)
         return account_list
 
     def list_accounts_under_ou_by_name(self, ou_id):
+        ou_id = self._check_if_org_unit_name(ou_id)
         response = self.list_accounts_under_ou(ou_id)
         return [a['Name'] for a in response]
 
     def list_accounts_under_ou_by_id(self, ou_id):
+        ou_id = self._check_if_org_unit_name(ou_id)
         response = self.list_accounts_under_ou(ou_id)
         return [a['Id'] for a in response]
