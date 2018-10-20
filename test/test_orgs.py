@@ -16,7 +16,6 @@ from organizer import utils, orgs, crawlers
 
 ORG_ACCESS_ROLE='myrole'
 MASTER_ACCOUNT_ID='123456789012'
-MOCK_ACCOUNT_NAMES = ['account01', 'account02', 'account03']
 
 SIMPLE_ORG_SPEC="""
 root:
@@ -270,25 +269,37 @@ def test_load():
  
 @mock_sts
 @mock_organizations
-def test_list_accounts():
+def test_dump_accounts():
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org.load()
-
-    response = org.list_accounts()
+    response = org.dump_accounts()
     assert isinstance(response, list)
     assert len(response) == 3
     mock_account_names = yaml.load(SIMPLE_ORG_SPEC)['root'][0]['accounts']
     for account in response:
-        assert account['Name'] in mock_account_names
-    for account in response:
-        assert re.compile(r'[0-9]{12}').match(account['Id'])
+        assert account['master_account_id'] == MASTER_ACCOUNT_ID
+        assert account['organization_id'] == org_id
+        assert account['name'] in mock_account_names
+        assert re.compile(r'[0-9]{12}').match(account['id'])
+        assert account['parent_id'] == root_id
+        assert account['email'] == account['name'] + '@example.com'
+        assert len(account['aliases']) == 0
+        assert len(account['credentials']) == 0
+    clean_up()
 
+ 
+@mock_sts
+@mock_organizations
+def test_list_accounts_by_name_or_id():
+    org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org.load()
+    mock_account_names = yaml.load(SIMPLE_ORG_SPEC)['root'][0]['accounts']
     response = org.list_accounts_by_name()
     assert isinstance(response, list)
     assert len(response) == 3
     assert sorted(response) == mock_account_names
-
     response = org.list_accounts_by_id()
     assert isinstance(response, list)
     assert len(response) == 3
@@ -296,32 +307,67 @@ def test_list_accounts():
         assert re.compile(r'[0-9]{12}').match(account_id)
     clean_up()
 
+
 @mock_sts
 @mock_organizations
-def test_list_org_units():
+def test_dump_org_units():
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org.load()
-
-    response = org.list_org_units()
+    response = org.dump_org_units()
     assert isinstance(response, list)
     assert len(response) == 6
     for ou in response:
         assert isinstance(ou, dict)
-        assert ou['Name'].startswith('ou0')
-        assert ou['Id'].startswith('ou-')
+        assert ou['master_account_id'] == MASTER_ACCOUNT_ID
+        assert ou['organization_id'] == org_id
+        assert ou['name'].startswith('ou0')
+        assert ou['id'].startswith('ou-')
+        assert (
+            ou['parent_id'] == root_id
+            or ou['parent_id'].startswith(root_id.replace('r-', 'ou-'))
+        )
+    clean_up()
 
+ 
+@mock_sts
+@mock_organizations
+def test_list_org_units_by_name_or_id():
+    org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org.load()
     response = org.list_org_units_by_name()
     assert isinstance(response, list)
     assert len(response) == 6
     for ou_name in response:
         assert ou_name.startswith('ou0')
-
     response = org.list_org_units_by_id()
     assert isinstance(response, list)
     assert len(response) == 6
     for ou_id in response:
         assert ou_id.startswith('ou-')
+    clean_up()
+
+
+@mock_sts
+@mock_organizations
+def test_org_dump():
+    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org.load()
+    crawler = crawlers.Crawler(org)
+    crawler.load_account_credentials()
+    dump = org.dump()
+    assert isinstance(dump, dict)
+    assert dump['id']
+    assert dump['id'].startswith('o-')
+    assert dump['master_account_id'] == MASTER_ACCOUNT_ID
+    assert dump['root_id'].startswith('r-')
+    assert dump['accounts'] == org.dump_accounts()
+    assert dump['org_units'] == org.dump_org_units()
+    json_dump = org.dump_json()
+    assert isinstance(json_dump, str)
+    assert json.loads(json_dump) == dump
     clean_up()
 
  
@@ -356,29 +402,28 @@ def test_get_account_name_by_id():
  
 @mock_sts
 @mock_organizations
-def test_get_org_unit_id_by_name():
+def test_get_account():
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org.load()
-    ou_id = org.get_org_unit_id_by_name('ou02')
-    ou_by_boto_client = org.client.list_organizational_units_for_parent(
-            ParentId=root_id)['OrganizationalUnits']
-    assert ou_id == next((
-        ou['Id'] for ou in ou_by_boto_client if ou['Name'] == 'ou02'
-    ), None)
+    account = org.get_account('account01')
+    assert isinstance(account, orgs.OrgAccount)
+    assert org.get_account(account) == account
+    assert account.name == 'account01'
+    assert account.id == org.get_account_id_by_name('account01')
     clean_up()
 
  
 @mock_sts
 @mock_organizations
-def test__check_if_org_unit_name():
+def test_get_org_unit_id():
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org.load()
     ou = org.org_units[0]
-    assert org._check_if_org_unit_name(ou.id) == ou.id
-    assert org._check_if_org_unit_name(ou.name) == ou.id
-    assert org._check_if_org_unit_name('root') == org.root_id
+    assert ou.id == org.get_org_unit_id(ou)
+    assert ou.id == org.get_org_unit_id(ou.id)
+    assert ou.id == org.get_org_unit_id(ou.name)
     clean_up()
 
  
@@ -388,90 +433,84 @@ def test_list_accounts_in_ou():
     org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org.load()
-    ou_id = org.get_org_unit_id_by_name('ou02')
-
-    response = org.list_accounts_in_ou(ou_id)
+    response = org.list_accounts_in_ou(root_id)
     accounts_by_boto_client = org.client.list_accounts_for_parent(
-        ParentId=ou_id
+        ParentId=root_id
     )['Accounts']
     for account in response:
-        assert account['Id'] == next((
+        assert account.id == next((
             a['Id'] for a in accounts_by_boto_client
-            if a['Name'] == account['Name']
+            if a['Name'] == account.name
         ), None)
-
-    response = org.list_accounts_in_ou_by_name(ou_id)
-    assert sorted(response) == sorted([a['Name'] for a in accounts_by_boto_client])
-
-    response = org.list_accounts_in_ou_by_id(ou_id)
-    assert sorted(response) == sorted([a['Id'] for a in accounts_by_boto_client])
+    response = org.list_accounts_in_ou('ou02')
+    accounts_by_boto_client = org.client.list_accounts_for_parent(
+        ParentId=org.get_org_unit_id('ou02')
+    )['Accounts']
+    for account in response:
+        assert account.id == next((
+            a['Id'] for a in accounts_by_boto_client
+            if a['Name'] == account.name
+        ), None)
     clean_up()
 
  
 @mock_sts
 @mock_organizations
-def test_list_accounts_under_ou():
+def test_list_org_units_in_ou():
     org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org.load()
-    ou02_id = org.get_org_unit_id_by_name('ou02')
-    ou02_1_id = org.get_org_unit_id_by_name('ou02-1')
+    response = org.list_org_units_in_ou(root_id)
+    ou_by_boto_client = org.client.list_organizational_units_for_parent(
+        ParentId=root_id
+    )['OrganizationalUnits']
+    for org_unit in response:
+        assert org_unit.id == next((
+            ou['Id'] for ou in ou_by_boto_client
+            if ou['Name'] == org_unit.name
+        ), None)
+    response = org.list_org_units_in_ou('ou02')
+    ou_by_boto_client = org.client.list_organizational_units_for_parent(
+        ParentId=org.get_org_unit_id('ou02')
+    )['OrganizationalUnits']
+    for org_unit in response:
+        assert org_unit.id == next((
+            ou['Id'] for ou in ou_by_boto_client
+            if ou['Name'] == org_unit.name
+        ), None)
+    clean_up()
 
-    response = org._recurse_org_units_under_ou(root_id)
+ 
+@mock_sts
+@mock_organizations
+def test_list_org_units_in_ou_recursive():
+    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org.load()
+    response = org.list_org_units_in_ou_recursive(root_id)
     assert len(response) == 6
-    for ou_id in response:
-        assert ou_id.startswith('ou-')
-
-    response = org._recurse_org_units_under_ou(ou02_id)
+    for ou in response:
+        assert isinstance(ou, orgs.OrganizationalUnit)
+        assert ou.id.startswith('ou-')
+    response = org.list_org_units_in_ou_recursive('ou02')
     assert len(response) == 2
-
-    response = org.list_accounts_under_ou(root_id)
-    assert len(response) == 13
-    for account in response:
-        assert account['Name'].startswith('account')
-        assert re.compile(r'[0-9]{12}').match(account['Id'])
-
-    response = org.list_accounts_under_ou(ou02_id)
-    assert len(response) == 5
-
-    response = org.list_accounts_under_ou(ou02_1_id)
-    assert len(response) == 1
-
-    response = org.list_accounts_under_ou_by_name(root_id)
-    assert len(response) == 13
-    for account_name in response:
-        assert account_name.startswith('account')
-
-    response = org.list_accounts_under_ou_by_id(ou02_id)
-    assert len(response) == 5
-    for account_id in response:
-        assert re.compile(r'[0-9]{12}').match(account_id)
     clean_up()
 
 
 @mock_sts
 @mock_organizations
-def test_org_dump():
+def test_list_accounts_in_ou_recursive():
     org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org.load()
-    crawler = crawlers.Crawler(org)
-    crawler.load_account_credentials()
-    dump = org.dump()
-    assert isinstance(dump, dict)
-    assert dump['id']
-    assert dump['id'].startswith('o-')
-    assert re.compile(r'[0-9]{12}').match(dump['master_account_id'])
-    assert dump['root_id'].startswith('r-')
-    for account in dump['accounts']:
-        assert re.compile(r'[0-9]{12}').match(account['id'])
-        assert account['name'].startswith('account')
-        assert account['parent_id'].startswith(('r-', 'ou-'))
-    for ou in dump['org_units']:
-        assert ou['id'].startswith('ou-')
-        assert ou['name'].startswith('ou')
-        assert ou['parent_id'].startswith(('r-', 'ou-'))
-    json_dump = org.dump_json()
-    assert isinstance(json_dump, str)
-    assert json.loads(json_dump) == dump
+    response = org.list_accounts_in_ou_recursive(root_id)
+    assert len(response) == 13
+    for account in response:
+        assert isinstance(account, orgs.OrgAccount)
+        assert account.name.startswith('account')
+        assert re.compile(r'[0-9]{12}').match(account.id)
+    response = org.list_accounts_in_ou_recursive('ou02')
+    assert len(response) == 5
+    response = org.list_accounts_in_ou_recursive('ou02-1')
+    assert len(response) == 1
     clean_up()

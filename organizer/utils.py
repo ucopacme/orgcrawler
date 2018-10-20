@@ -6,15 +6,43 @@ except ImportError:
     import Queue as queue
 import json
 import yaml
+from datetime import datetime
+from functools import singledispatch
 
 import boto3
 from botocore.exceptions import ClientError
 
 
-def jsonfmt(obj):
+@singledispatch
+def to_serializable(val):
+    """Used by default."""
+    return str(val)
+
+
+@to_serializable.register(datetime)
+def _(val):
+    return val.isoformat()
+
+
+# @to_serializable.register(organizer.orgs.OrgObject)
+# def _(val):
+#     return val.dump()
+#
+# Unfortunateley, This does not work:
+#   File "/home/agould/git-repos/github/ucopacme/organizer/organizer/utils.py", line 34, in <module>
+#     def ts_org_object(val: orgs.OrgObject):
+# AttributeError: module 'organizer.orgs' has no attribute 'OrgObject'
+
+
+def jsonfmt(obj, default=to_serializable):
     if isinstance(obj, str):
         return obj
-    return json.dumps(obj, indent=4, separators=(',', ': '))
+    return json.dumps(
+        obj,
+        indent=4,
+        separators=(',', ': '),
+        default=default,
+    )
 
 
 def yamlfmt(obj):
@@ -24,26 +52,14 @@ def yamlfmt(obj):
 
 
 def assume_role_in_account(account_id, role_name):
+    # any exceptions must be caugh by calling function
     role_arn = 'arn:aws:iam::{}:role/{}'.format(account_id, role_name)
     role_session_name = account_id + '-' + role_name.split('/')[-1]
     sts_client = boto3.client('sts')
-    try:
-        credentials = sts_client.assume_role(
-            RoleArn=role_arn,
-            RoleSessionName=role_session_name
-        )['Credentials']
-    except ClientError as e:
-        if e.response['Error']['Code'] == 'AccessDenied':
-            errmsg = 'cannot assume role {} in account {}: AccessDenied'.format(
-                role_name, account_id
-            )
-        elif e.response['Error']['Code'] == 'ExpiredToken':
-            errmsg = 'cannot assume role {} in account {}: ExpiredToken'.format(
-                role_name, account_id
-            )
-        else:
-            raise e
-        sys.exit(errmsg)
+    credentials = sts_client.assume_role(
+        RoleArn=role_arn,
+        RoleSessionName=role_session_name
+    )['Credentials']
     return dict(
         aws_access_key_id=credentials['AccessKeyId'],
         aws_secret_access_key=credentials['SecretAccessKey'],
@@ -57,7 +73,15 @@ def get_master_account_id(role_name=None):
         account_id = sts_client.get_caller_identity()['Account']
     except ClientError as e:
         sys.exit('Cant obtain master account id: {}'.format(e.response['Error']['Code']))
-    credentials = assume_role_in_account(account_id, role_name)
+    try:
+        credentials = assume_role_in_account(account_id, role_name)
+    except ClientError as e:
+        errmsg = 'cannot assume role {} in account {}: {}'.format(
+            role_name,
+            account_id,
+            e.response['Error']['Code'],
+        )
+        sys.exit(errmsg)
     client = boto3.client('organizations', **credentials)
     try:
         return client.describe_organization()['Organization']['MasterAccountId']
@@ -86,7 +110,10 @@ def regions_for_service(service_name):
     s = boto3.session.Session()
     if service_name not in s.get_available_services():
         raise ValueError("'{}' is not a valid AWS service".format(service_name))
-    return s.get_available_regions(service_name)
+    regions = s.get_available_regions(service_name)
+    if len(regions) == 0:
+        regions = 'GLOBAL'
+    return regions
 
 
 def all_regions():

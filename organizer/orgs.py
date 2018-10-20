@@ -1,4 +1,5 @@
 import os
+import sys
 import pickle
 import json
 from datetime import datetime, timedelta
@@ -7,44 +8,6 @@ import boto3
 from botocore.exceptions import ClientError
 
 from organizer import utils
-
-
-class OrgObject(object):
-
-    def __init__(self, organization, **kwargs):
-        self.organization_id = organization.id
-        self.master_account_id = organization.master_account_id
-        self.name = kwargs['name']
-        self.id = kwargs.get('id')
-        self.parent_id = kwargs.get('parent_id')
-
-    def dump(self):
-        org_object_dump = dict()
-        org_object_dump.update(vars(self).items())
-        return org_object_dump
-
-
-class OrganizationalUnit(OrgObject):
-
-    def __init__(self, *args, **kwargs):
-        super(OrganizationalUnit, self).__init__(*args, **kwargs)
-
-
-class OrgAccount(OrgObject):
-
-    def __init__(self, *args, **kwargs):
-        super(OrgAccount, self).__init__(*args, **kwargs)
-        self.email = kwargs['email']
-        self.aliases = kwargs.get('aliases', [])
-        self.credentials = {}
-
-    def load_credentials(self, access_role):
-        self.credentials = utils.assume_role_in_account(self.id, access_role)
-
-    def dump(self):
-        account_dump = super(OrgAccount, self).dump()
-        account_dump.update(dict(credentials={}))
-        return account_dump
 
 
 class Org(object):
@@ -66,12 +29,20 @@ class Org(object):
         self.accounts = []
         self.org_units = []
 
+    def dump_accounts(self, account_list=None):
+        if not account_list:
+            account_list = self.accounts
+        return [a.dump() for a in account_list]
+
+    def dump_org_units(self):
+        return [ou.dump() for ou in self.org_units]
+
     def dump(self):
         org_dump = dict()
         org_dump.update(vars(self).items())
-        org_dump['accounts'] = [a.dump() for a in self.accounts]
-        org_dump['org_units'] = [ou.dump() for ou in self.org_units]
         org_dump.update(dict(client=None))
+        org_dump['accounts'] = self.dump_accounts()
+        org_dump['org_units'] = self.dump_org_units()
         return org_dump
 
     def dump_json(self):
@@ -102,10 +73,18 @@ class Org(object):
 
     def _get_org_client(self):
         """ Returns a boto3 client for Organizations object """
-        credentials = utils.assume_role_in_account(
-            self.master_account_id,
-            self.access_role
-        )
+        try:
+            credentials = utils.assume_role_in_account(
+                self.master_account_id,
+                self.access_role,
+            )
+        except ClientError as e:
+            errmsg = 'cannot assume role {} in account {}: {}'.format(
+                self.access_role,
+                self.master_account_id,
+                e.response['Error']['Code'],
+            )
+            sys.exit(errmsg)
         return boto3.client('organizations', **credentials)
 
     def _get_cached_org_from_file(self):
@@ -197,23 +176,15 @@ class Org(object):
 
     # Query methods
 
-    def list_accounts(self):
-        return [dict(Name=a.name, Id=a.id) for a in self.accounts]
+    def list_accounts_by_name(self, account_list=None):
+        if not account_list:
+            account_list = self.accounts
+        return [a.name for a in account_list]
 
-    def list_accounts_by_name(self):
-        return [a.name for a in self.accounts]
-
-    def list_accounts_by_id(self):
-        return [a.id for a in self.accounts]
-
-    def list_org_units(self):
-        return [dict(Name=ou.name, Id=ou.id) for ou in self.org_units]
-
-    def list_org_units_by_name(self):
-        return [ou.name for ou in self.org_units]
-
-    def list_org_units_by_id(self):
-        return [ou.id for ou in self.org_units]
+    def list_accounts_by_id(self, account_list=None):
+        if not account_list:
+            account_list = self.accounts
+        return [a.id for a in account_list]
 
     def get_account_id_by_name(self, name):
         return next((a.id for a in self.accounts if a.name == name), None)
@@ -221,50 +192,94 @@ class Org(object):
     def get_account_name_by_id(self, account_id):
         return next((a.name for a in self.accounts if a.id == account_id), None)
 
-    def get_org_unit_id_by_name(self, name):
-        return next((ou.id for ou in self.org_units if ou.name == name), None)
+    def get_account(self, identifier):
+        if isinstance(identifier, OrgAccount):
+            return identifier
+        return next((
+            a for a in self.accounts if (
+                identifier == a.name or
+                identifier == a.id or
+                identifier in a.aliases
+            )
+        ), None)
 
-    def _check_if_org_unit_name(self, ou_id):
-        if ou_id == 'root':
+    def list_org_units_by_name(self, ou_list=None):
+        if not ou_list:
+            ou_list = self.org_units
+        return [ou.name for ou in ou_list]
+
+    def list_org_units_by_id(self, ou_list=None):
+        if not ou_list:
+            ou_list = self.org_units
+        return [ou.id for ou in ou_list]
+
+    def get_org_unit_id(self, identifier):
+        # ISSUE: should self.org_units contain the root ou?
+        if identifier == 'root' or identifier == self.root_id:
             return self.root_id
-        elif ou_id in self.list_org_units_by_name():
-            return self.get_org_unit_id_by_name(ou_id)
-        return ou_id
+        if isinstance(identifier, OrganizationalUnit):
+            return identifier.id
+        return next((
+            ou.id for ou in self.org_units if (
+                identifier == ou.name or
+                identifier == ou.id
+            )
+        ), None)
 
-    def list_accounts_in_ou(self, ou_id):
-        ou_id = self._check_if_org_unit_name(ou_id)
-        return [dict(Name=a.name, Id=a.id) for a in self.accounts if a.parent_id == ou_id]
+    def list_accounts_in_ou(self, ou):
+        ou_id = self.get_org_unit_id(ou)
+        return [a for a in self.accounts if a.parent_id == ou_id]
 
-    def list_accounts_in_ou_by_name(self, ou_id):
-        ou_id = self._check_if_org_unit_name(ou_id)
-        return [a.name for a in self.accounts if a.parent_id == ou_id]
+    def list_org_units_in_ou(self, ou):
+        ou_id = self.get_org_unit_id(ou)
+        return [ou for ou in self.org_units if ou.parent_id == ou_id]
 
-    def list_accounts_in_ou_by_id(self, ou_id):
-        ou_id = self._check_if_org_unit_name(ou_id)
-        return [a.id for a in self.accounts if a.parent_id == ou_id]
+    def list_org_units_in_ou_recursive(self, ou):
+        ou_list = self.list_org_units_in_ou(ou)
+        for ou in ou_list:
+            ou_list += self.list_org_units_in_ou_recursive(ou)
+        return ou_list
 
-    def _recurse_org_units_under_ou(self, parent_id):
-        ou_id_list = [
-            ou.id for ou in self.org_units
-            if ou.parent_id == parent_id
-        ]
-        for ou_id in ou_id_list:
-            ou_id_list += self._recurse_org_units_under_ou(ou_id)
-        return ou_id_list
-
-    def list_accounts_under_ou(self, ou_id):
-        ou_id = self._check_if_org_unit_name(ou_id)
-        account_list = self.list_accounts_in_ou(ou_id)
-        for ou_id in self._recurse_org_units_under_ou(ou_id):
-            account_list += self.list_accounts_in_ou(ou_id)
+    def list_accounts_in_ou_recursive(self, ou):
+        account_list = self.list_accounts_in_ou(ou)
+        for ou in self.list_org_units_in_ou_recursive(ou):
+            account_list += self.list_accounts_in_ou(ou)
         return account_list
 
-    def list_accounts_under_ou_by_name(self, ou_id):
-        ou_id = self._check_if_org_unit_name(ou_id)
-        response = self.list_accounts_under_ou(ou_id)
-        return [a['Name'] for a in response]
 
-    def list_accounts_under_ou_by_id(self, ou_id):
-        ou_id = self._check_if_org_unit_name(ou_id)
-        response = self.list_accounts_under_ou(ou_id)
-        return [a['Id'] for a in response]
+class OrgObject(object):
+
+    def __init__(self, organization, **kwargs):
+        self.organization_id = organization.id
+        self.master_account_id = organization.master_account_id
+        self.name = kwargs['name']
+        self.id = kwargs.get('id')
+        self.parent_id = kwargs.get('parent_id')
+
+    def dump(self):
+        org_object_dump = dict()
+        org_object_dump.update(vars(self).items())
+        return org_object_dump
+
+
+class OrganizationalUnit(OrgObject):
+
+    def __init__(self, *args, **kwargs):
+        super(OrganizationalUnit, self).__init__(*args, **kwargs)
+
+
+class OrgAccount(OrgObject):
+
+    def __init__(self, *args, **kwargs):
+        super(OrgAccount, self).__init__(*args, **kwargs)
+        self.email = kwargs['email']
+        self.aliases = kwargs.get('aliases', [])
+        self.credentials = {}
+
+    def load_credentials(self, access_role):
+        self.credentials = utils.assume_role_in_account(self.id, access_role)
+
+    def dump(self):
+        account_dump = super(OrgAccount, self).dump()
+        account_dump.update(dict(credentials={}))
+        return account_dump

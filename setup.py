@@ -41,15 +41,16 @@ setup(
     packages=find_packages(
         '.',
         exclude=[
-            'test',
             'bin',
+            'test',
         ],
     ),
     include_package_data=True,
     zip_safe=False,
     entry_points={
         'console_scripts': [
-            'organizer=organizer.cli:main',
+            'organizer=organizer.cli.organizer:main',
+            'orgcrawler=organizer.cli.orgcrawler:main',
         ],
     },
 )
