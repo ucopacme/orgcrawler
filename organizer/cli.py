@@ -38,10 +38,8 @@ Available Query Commands:
 
 
 import sys
-import json
-import yaml
 from docopt import docopt
-from organizer import orgs
+from organizer import orgs, utils
 from organizer.utils import get_master_account_id
 
 
@@ -69,18 +67,6 @@ _COMMANDS_WITH_ARG = [
 AVAILABLE_COMMANDS = _COMMANDS + _COMMANDS_WITH_ARG
 
 
-def jsonfmt(obj):
-    if isinstance(obj, str):
-        return obj
-    return json.dumps(obj, indent=4, separators=(',', ': '))
-
-
-def yamlfmt(obj):
-    if isinstance(obj, str):
-        return obj
-    return yaml.dump(obj, default_flow_style=False)
-
-
 def main():
     args = docopt(__doc__)
     if len(sys.argv) == 1:
@@ -92,9 +78,9 @@ def main():
         print('ERROR: Query command "{}" requires an argument'.format(args['COMMAND']))
         sys.exit(__doc__)
     if args['--format'] == 'json':
-        formatter = jsonfmt
+        formatter = utils.jsonfmt
     elif args['--format'] == 'yaml':
-        formatter = yamlfmt
+        formatter = utils.yamlfmt
     else:
         print('ERROR: Print format must be either "json" or "yaml"')
         sys.exit(__doc__)

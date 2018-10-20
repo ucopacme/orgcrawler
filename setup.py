@@ -42,6 +42,7 @@ setup(
         '.',
         exclude=[
             'test',
+            'bin',
         ],
     ),
     include_package_data=True,

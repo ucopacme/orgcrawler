@@ -1,11 +1,25 @@
 import re
 import time
+import json
+import yaml
 
 import boto3
+from botocore.exceptions import ClientError
 from moto import mock_sts, mock_organizations
 import pytest
 
 from organizer import utils
+from .test_orgs import SIMPLE_ORG_SPEC
+
+
+def test_jsonfmt():
+    output = utils.jsonfmt(SIMPLE_ORG_SPEC)
+    assert isinstance(output, str)
+
+
+def test_yamlfmt():
+    output = utils.yamlfmt(SIMPLE_ORG_SPEC)
+    assert isinstance(output, str)
 
 @mock_sts
 def test_assume_role_in_account():
@@ -48,3 +62,15 @@ def test_queue_threads():
     for item in collector:
         assert re.compile(r'item-[0-9]').match(item)
     assert int((stoptime - starttime) *10) == 1
+
+
+def test_regions_for_service():
+    regions = utils.regions_for_service('lambda')
+    assert isinstance(regions, list)
+    assert 'us-east-1' in regions
+    regions = utils.regions_for_service('iam')
+    assert regions ==  []
+    with pytest.raises(Exception) as e:
+        regions = utils.regions_for_service('blee')
+    all_regions = utils.all_regions()
+    assert all_regions == utils.regions_for_service('ec2')

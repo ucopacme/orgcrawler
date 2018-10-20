@@ -5,6 +5,50 @@ from botocore.exceptions import ClientError
 from organizer import utils
 
 
+class OrgObject(object):
+
+    def __init__(self, organization, **kwargs):
+        self.organization_id = organization.id
+        self.master_account_id = organization.master_account_id
+        self.name = kwargs['name']
+        self.id = kwargs.get('object_id')
+        self.parent_id = kwargs.get('parent_id')
+
+    def dump(self):
+        return dict(
+            Name=self.name,
+            Id=self.id,
+            ParentId=self.parent_id,
+        )
+
+
+class OrgAccount(OrgObject):
+
+    def __init__(self, *args, **kwargs):
+        super(OrgAccount, self).__init__(*args, **kwargs)
+        self.email = kwargs['email']
+        self.aliases = []
+        self.credentials = {}
+
+    def dump(self):
+        return dict(
+            Name=self.name,
+            Id=self.id,
+            Email=self.email,
+            ParentId=self.parent_id,
+            Aliases=', '.join(self.aliases),
+        )
+
+    def load_credentials(self, access_role):
+        self.credentials = utils.assume_role_in_account(self.id, access_role)
+
+
+class OrganizationalUnit(OrgObject):
+
+    def __init__(self, *args, **kwargs):
+        super(OrganizationalUnit, self).__init__(*args, **kwargs)
+
+
 class Org(object):
 
     def __init__(self, master_account_id, org_access_role):
@@ -71,7 +115,13 @@ class Org(object):
             # thread worker function: get parent_id and create OrgAccount object
             response = org.client.list_parents(ChildId=account['Id'])
             parent_id = response['Parents'][0]['Id']
-            org_account = OrgAccount(org, account['Name'], account['Id'], parent_id)
+            org_account = OrgAccount(
+                org,
+                name=account['Name'],
+                object_id=account['Id'],
+                email=account['Email'],
+                parent_id=parent_id,
+            )
             org.accounts.append(org_account)
         utils.queue_threads(
             accounts,
@@ -94,7 +144,12 @@ class Org(object):
             org_units += response['OrganizationalUnits']
         for ou in org_units:
             self.org_units.append(
-                OrganizationalUnit(self, ou['Name'], ou['Id'], parent_id)
+                OrganizationalUnit(
+                    self,
+                    name=ou['Name'],
+                    object_id=ou['Id'],
+                    parent_id=parent_id,
+                )
             )
             self._recurse_organization(ou['Id'])
 
@@ -164,32 +219,3 @@ class Org(object):
     def list_accounts_under_ou_by_id(self, ou_id):
         response = self.list_accounts_under_ou(ou_id)
         return [a['Id'] for a in response]
-
-
-class OrgObject(object):
-
-    def __init__(self, organization, name, object_id=None, parent_id=None):
-        self.organization_id = organization.id
-        self.master_account_id = organization.master_account_id
-        self.name = name
-        self.id = object_id
-        self.parent_id = parent_id
-
-    def dump(self):
-        return dict(
-            Name=self.name,
-            Id=self.id,
-            ParentId=self.parent_id,
-        )
-
-
-class OrgAccount(OrgObject):
-
-    def __init__(self, *args):
-        super(OrgAccount, self).__init__(*args)
-
-
-class OrganizationalUnit(OrgObject):
-
-    def __init__(self, *args):
-        super(OrganizationalUnit, self).__init__(*args)
