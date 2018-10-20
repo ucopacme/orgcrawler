@@ -9,4 +9,5 @@ __pycache__
 .~c9*
 .coverage
 .coverage.*
-notes
+notes/
+docs/_build
