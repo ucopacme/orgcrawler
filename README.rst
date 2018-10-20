@@ -9,7 +9,7 @@ Installation
 
 organizer is not yet up on pypi.  Install it directly from github::
 
-  pip install https://github.com/ucopacme/organizer/archive/ashley.zip
+  pip install https://github.com/ucopacme/organizer/archive/master.zip
 
 Currently organizer only supports python 3.6.
 
