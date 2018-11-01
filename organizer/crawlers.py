@@ -30,14 +30,25 @@ class Crawler(object):
         self.exc_info = None
         self.error = None
 
+    def is_valid_account(self, account):
+        if self.org.get_account(account) is None:
+            raise ValueError('"{}" is not a valid organization account'.format(account))
+        return True
+
     def validate_accounts(self):
-        if isinstance(self.accounts, str) or isinstance(self.accounts, orgs.OrgAccount):
-            self.accounts = [self.accounts]
-        elif not isinstance(self.accounts, list):
-            raise ValueError(
-                'keyword argument "accounts" must be str, list or orgs.OrgAccount'
-            )
-        self.accounts = [self.org.get_account(a) for a in self.accounts]
+        #if isinstance(self.accounts, str) or isinstance(self.accounts, orgs.OrgAccount):
+        #    self.accounts = [self.accounts]
+        #elif not isinstance(self.accounts, list):
+        #    raise ValueError(
+        #        'keyword argument "accounts" must be str, list or orgs.OrgAccount'
+        #    )
+        if self.accounts != self.org.accounts:
+            if not isinstance(self.accounts, list):
+                self.accounts = [self.accounts]
+            self.accounts = [
+                self.org.get_account(a) for a in self.accounts
+                if self.is_valid_account(a)
+            ]
 
     def validate_regions(self):
         if self.regions == 'GLOBAL':
