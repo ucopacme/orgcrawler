@@ -39,16 +39,7 @@ import importlib
 from docopt import docopt
 
 from organizer import __version__, crawlers, orgs, utils
-
-
-# ISSUE: not printing account, region names with response outputs
-def process_execution_outputs(execution):
-    collector = []
-    for response in execution.responses:
-        d = dict(Account=response.account.name)
-        d.update(response.payload_output)
-        collector.append(d)
-    return(utils.jsonfmt(collector))
+from organizer.cli.utils import setup_crawler, output_regions_per_account
 
 
 def get_payload_function_from_string(payload_name):
@@ -91,12 +82,9 @@ def main():     # pragma: no cover
     else:
         payload = get_payload_function_from_string(args['PAYLOAD'])
 
-    org = orgs.Org(args['--master-account-id'], args['--master-role'])
-    org.load()
-    crawler = crawlers.Crawler(org, **crawler_args)
-    crawler.load_account_credentials()
+    crawler = setup_crawler(args['--master-role'], **crawler_args)
     execution = crawler.execute(payload)
-    print(process_execution_outputs(execution))
+    print(utils.jsonfmt(format_responses(execution)))
 
 
 if __name__ == "__main__":      # pragma: no cover
