@@ -63,7 +63,7 @@ class Org(object):
         self._client = None
         self._cache_file_max_age = cache_file_max_age
         self._cache_dir = os.path.expanduser(cache_dir)
-        if not cache_file:
+        if cache_file is None:
             cache_file = '-'.join(['cache_file', master_account_id])
         self._cache_file = os.path.join(self._cache_dir, cache_file)
         self._exc_info = None
