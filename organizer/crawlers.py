@@ -36,12 +36,6 @@ class Crawler(object):
         return True
 
     def validate_accounts(self):
-        #if isinstance(self.accounts, str) or isinstance(self.accounts, orgs.OrgAccount):
-        #    self.accounts = [self.accounts]
-        #elif not isinstance(self.accounts, list):
-        #    raise ValueError(
-        #        'keyword argument "accounts" must be str, list or orgs.OrgAccount'
-        #    )
         if self.accounts != self.org.accounts:
             if not isinstance(self.accounts, list):
                 self.accounts = [self.accounts]
