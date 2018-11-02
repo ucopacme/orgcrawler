@@ -43,10 +43,6 @@ def test_orgquery_success(options_list):
         orgquery.main,
         options_list,
     )
-    print(result.output_bytes)
-    print(result.exit_code)
-    print(result.exception)
-    print(result.exc_info)
     assert result.exit_code == 0
 
 
@@ -67,8 +63,4 @@ def test_orgquery_failure(options_list):
         orgquery.main,
         options_list,
     )
-    print(result.output_bytes)
-    print(result.exit_code)
-    print(result.exception)
-    print(result.exc_info)
     assert result.exit_code != 0

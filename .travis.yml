@@ -5,7 +5,7 @@ before_install:
   - env
   - whoami
   - cat /etc/issue
-  - sudo rm -f /etc/boto.cfg
+  - export BOTO_CONFIG=/dev/null
 install:
   - pip install -r requirements.txt
   - pip install https://github.com/spulec/moto/archive/master.zip

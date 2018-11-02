@@ -36,10 +36,6 @@ def test_orgcrawler_success(options_list):
         orgcrawler.main,
         options_list,
     )
-    print(result.output_bytes)
-    print(result.exit_code)
-    print(result.exception)
-    print(result.exc_info)
     assert result.exit_code == 0
 
 
@@ -68,8 +64,4 @@ def test_orgcrawler_failure(options_list):
         orgcrawler.main,
         options_list,
     )
-    print(result.output_bytes)
-    print(result.exit_code)
-    print(result.exception)
-    print(result.exc_info)
     assert result.exit_code != 0
