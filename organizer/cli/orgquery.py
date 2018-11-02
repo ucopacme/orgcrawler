@@ -99,11 +99,6 @@ Examples:
     orgquery -r OrgMasterRole -f json get_account_id_by_name webapps
     """
 
-    print(command)
-    print(argument)
-    print(role)
-    print(format)
-
     if format == 'json':
         formatter = jsonfmt
     elif format == 'yaml':
@@ -120,4 +115,4 @@ Examples:
 
 
 if __name__ == '__main__':
-    main()
+    main()  # pragma no cover

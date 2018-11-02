@@ -1,4 +1,5 @@
 import pytest
+from click.testing import CliRunner
 from moto import (
     mock_organizations,
     mock_sts,
@@ -24,3 +25,50 @@ def test_jsonfmt():
     )
     output = orgquery.jsonfmt(account)
     assert isinstance(output, str)
+
+
+@mock_sts
+@mock_organizations
+@pytest.mark.parametrize('options_list', [
+    (['--help']),
+    (['--version']),
+    (['--role', ORG_ACCESS_ROLE, 'dump']),
+    (['--role', ORG_ACCESS_ROLE, '--format', 'yaml', 'dump']),
+    (['--role', ORG_ACCESS_ROLE, '--format', 'yaml', 'list_accounts_in_ou', 'root']),
+])
+def test_orgquery_success(options_list):
+    org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
+    runner = CliRunner()
+    result = runner.invoke(
+        orgquery.main,
+        options_list,
+    )
+    print(result.output_bytes)
+    print(result.exit_code)
+    print(result.exception)
+    print(result.exc_info)
+    assert result.exit_code == 0
+
+
+@mock_sts
+@mock_organizations
+@pytest.mark.parametrize('options_list', [
+    (['--blee']),
+    (['--role']),
+    (['--role', ORG_ACCESS_ROLE, 'bogus_command']),
+    (['--role', ORG_ACCESS_ROLE, '--format', 'blee', 'dump']),
+    (['--role', ORG_ACCESS_ROLE, 'dump', 'bogus_arg']),
+    (['--role', ORG_ACCESS_ROLE, 'list_accounts_in_ou']),
+])
+def test_orgquery_failure(options_list):
+    org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
+    runner = CliRunner()
+    result = runner.invoke(
+        orgquery.main,
+        options_list,
+    )
+    print(result.output_bytes)
+    print(result.exit_code)
+    print(result.exception)
+    print(result.exc_info)
+    assert result.exit_code != 0
