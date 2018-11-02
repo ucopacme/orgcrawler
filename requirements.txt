@@ -4,6 +4,7 @@ flake8
 sphinx
 sphinx-autoapi
 # backlevel because moto is broken still
+boto==2.48.0
 boto3==1.7.84
 botocore==1.10.84
 
