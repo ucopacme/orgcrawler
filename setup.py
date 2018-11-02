@@ -49,7 +49,7 @@ setup(
     zip_safe=False,
     entry_points={
         'console_scripts': [
-            'organizer=organizer.cli.organizer:main',
+            'orgquery=organizer.cli.orgquery:main',
             'orgcrawler=organizer.cli.orgcrawler:main',
         ],
     },

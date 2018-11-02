@@ -1,12 +1,15 @@
 #!/usr/bin/env python
 
-import os
-import sys
-import importlib
 import click
 
-from organizer import __version__, utils
-from organizer.cli.utils import setup_crawler, format_responses
+import organizer
+from organizer.utils import jsonfmt, regions_for_service
+from organizer.cli.utils import (
+    setup_crawler,
+    format_responses,
+    get_payload_function_from_string,
+    get_payload_function_from_file,
+)
 
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -15,7 +18,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 def print_version(ctx, param, value):
     if not value or ctx.resilient_parsing:
         return
-    click.echo(__version__)
+    click.echo(organizer.__version__)
     ctx.exit()
 
 
@@ -55,7 +58,7 @@ def main(master_role, account_role, regions, accounts,
     if accounts:
         crawler_args['accounts'] = accounts.split(',')
     if service:
-        crawler_args['regions'] = utils.regions_for_service(service)
+        crawler_args['regions'] = regions_for_service(service)
     elif regions:
         crawler_args['regions'] = regions.split(',')
     if account_role:
@@ -67,22 +70,7 @@ def main(master_role, account_role, regions, accounts,
 
     crawler = setup_crawler(master_role, **crawler_args)
     execution = crawler.execute(payload)
-    click.echo(utils.jsonfmt(format_responses(execution)))
-
-
-def get_payload_function_from_string(payload_name):
-    module_name, _, function_name = payload_name.rpartition('.')
-    module = importlib.import_module(module_name)
-    return getattr(module, function_name)
-
-
-def get_payload_function_from_file(file_name, payload_name):
-    file_name = os.path.expanduser(file_name)
-    module_dir = os.path.dirname(file_name)
-    sys.path.append(os.path.abspath(module_dir))
-    module_name = os.path.basename(file_name).replace('.py', '')
-    module = importlib.import_module(module_name)
-    return getattr(module, payload_name)
+    click.echo(jsonfmt(format_responses(execution)))
 
 
 if __name__ == "__main__":

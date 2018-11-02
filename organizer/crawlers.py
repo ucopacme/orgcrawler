@@ -3,7 +3,7 @@ import time
 
 from botocore.exceptions import ClientError
 
-from organizer import utils, orgs
+from organizer import utils
 
 
 DEFAULT_REGION = 'us-east-1'

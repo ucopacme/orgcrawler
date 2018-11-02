@@ -4,7 +4,7 @@ from moto import (
     mock_sts,
 )
 from organizer import orgs, utils
-from organizer.cli import organizer
+from organizer.cli import orgquery
 from ..test_orgs import (
     MASTER_ACCOUNT_ID,
     ORG_ACCESS_ROLE,
@@ -22,5 +22,5 @@ def test_jsonfmt():
         id='112233445566',
         email='account01@example.org',
     )
-    output = organizer.jsonfmt(account)
+    output = orgquery.jsonfmt(account)
     assert isinstance(output, str)

@@ -4,11 +4,11 @@
 Script for querying AWS Organization resources
 
 Usage:
-    organizer [-h][-V]
-    organizer [-f format] [-m master_account_id] -r role COMMAND [ARGUMENT]
+    orgquery [-h][-V]
+    orgquery [-f format] [-m master_account_id] -r role COMMAND [ARGUMENT]
 
 Arguments:
-    COMMAND     An organizer query command to run
+    COMMAND     An organization query command to run
     ARGUMENT    A command argument to supply if needed
 
 Options:
@@ -16,7 +16,7 @@ Options:
     -V, --version           Display version info and exit
     -f format               Output format:  "json" or "yaml". [Default: json]
     -m master_account_id    The master account id for the organization
-    -r role                 The AWS role name to assume when running organizer
+    -r role                 The AWS role name to assume when running orgquery
 
 Available Query Commands:
     dump
