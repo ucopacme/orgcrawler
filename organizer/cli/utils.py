@@ -61,8 +61,8 @@ def purge_empty_responses(execution):
     Expects each response to be a list of dict.
     '''
     responses = [
-        r for r in execution.responses if
-        len(r.payload_output) == 1 and
-        list() not in r.payload_output.values()
+        r for r in execution.responses if (
+            len(r.payload_output) == 1 and list() not in r.payload_output.values()
+        )
     ]
     return responses

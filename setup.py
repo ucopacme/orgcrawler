@@ -34,9 +34,8 @@ setup(
     install_requires=[
         'botocore',
         'boto3',
-        'awscli',
         'PyYAML',
-        'docopt',
+        'click',
     ],
     packages=find_packages(
         '.',

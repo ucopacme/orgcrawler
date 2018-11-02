@@ -111,7 +111,7 @@ class Org(object):
         try:
             org_dump = self._get_cached_org_from_file()
             self._load_org_dump(org_dump)
-        except RuntimeError as e:
+        except RuntimeError:
             self._load_org()
             self.accounts = []
             self._load_accounts()
@@ -281,11 +281,8 @@ class Org(object):
         if isinstance(identifier, OrgAccount):
             return identifier
         return next((
-            a for a in self.accounts if (
-                identifier == a.name or
-                identifier == a.id or
-                identifier in a.aliases
-            )
+            a for a in self.accounts
+            if (identifier == a.name or identifier == a.id or identifier in a.aliases)
         ), None)
 
     def list_org_units_by_name(self, ou_list=None):
@@ -324,8 +321,7 @@ class Org(object):
             return ou.id
         return next((
             org_unit.id for org_unit in self.org_units if (
-                ou == org_unit.name or
-                ou == org_unit.id
+                ou == org_unit.name or ou == org_unit.id
             )
         ), None)
 

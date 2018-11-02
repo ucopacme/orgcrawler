@@ -6,9 +6,9 @@ before_install:
   - whoami
   - cat /etc/issue
 install:
-  - pip install .
-  - pip install https://github.com/spulec/moto/archive/master.zip
   - pip install -r requirements.txt
+  - pip install https://github.com/spulec/moto/archive/master.zip
+  - pip install .
 script: 
   - flake8 organizer
   - pytest

@@ -96,7 +96,7 @@ class Crawler(object):
             response.timer.start()
             try:
                 response.payload_output = execution.payload(region, account, *args)
-            except Exception as e:
+            except Exception:
                 response.exc_info = sys.exc_info()
                 execution.errors = True
             response.timer.stop()
