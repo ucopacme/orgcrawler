@@ -56,43 +56,56 @@ def test_format_responses():
         assert 'Regions' in response
 
 
-
 @mock_sts
 @mock_organizations
 @mock_iam
-def test_orgcrawler():
-    print(payloads.__file__)
+@pytest.mark.parametrize('options_list', [
+    (['--help']),
+    (['--version']),
+    (['--master-role', ORG_ACCESS_ROLE, 'payloads.get_account_aliases']),
+    (['-r', ORG_ACCESS_ROLE, '--accounts', 'account01,account02', 'payloads.get_account_aliases']),
+    (['-r', ORG_ACCESS_ROLE, '--regions', 'us-west-2', 'payloads.get_account_aliases']),
+    (['-r', ORG_ACCESS_ROLE, '--service', 'iam', 'payloads.get_account_aliases']),
+    (['-r', ORG_ACCESS_ROLE, 'payloads.get_account_aliases', '--account-role', ORG_ACCESS_ROLE]),
+    (['-r', ORG_ACCESS_ROLE, 'get_account_aliases', '--payload-file', payloads.__file__]),
+])
+def test_orgcrawler_success(options_list):
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
     runner = CliRunner()
     result = runner.invoke(
         orgcrawler.main,
-        # succeeds:
-        #['--help'],
-        #['--version'],
-        #['--master-role', ORG_ACCESS_ROLE, 'payloads.get_account_aliases'],
-        #['-r', ORG_ACCESS_ROLE, '--accounts', 'account01,account02', 'payloads.get_account_aliases'],
-        #['-r', ORG_ACCESS_ROLE, '--regions', 'us-west-2', 'payloads.get_account_aliases'],
-        #['-r', ORG_ACCESS_ROLE, '--service', 'iam', 'payloads.get_account_aliases'],
-        #['-r', ORG_ACCESS_ROLE, 'payloads.get_account_aliases', '--account-role', ORG_ACCESS_ROLE],
-        ['-r', ORG_ACCESS_ROLE, 'get_account_aliases', '--payload-file', payloads.__file__],
-
-        # fails:
-        #[],
-        #['-r', 'blee'],
-        #['-f', '/dev/shit']
-        #['--master-role'],
-        #['-r'],
-        #['--accounts'],
-        # returns version string only:
-        #['-r', ORG_ACCESS_ROLE, 'organizer.payloads.get_account_aliases'],
-        #['-r', ORG_ACCESS_ROLE, 'organizer.payloads.get_account_ali'],
-        #['--help', '--piss-off']
+        options_list,
     )
-    print(result.runner)
+
+
+@mock_sts
+@mock_organizations
+@mock_iam
+@pytest.mark.parametrize('options_list', [
+    (['--blee']),
+    (['--master-role']),
+    (['--master-role', 'blee']),
+    (['--master-role', ORG_ACCESS_ROLE, 'payloads.blee']),
+    (['-r', ORG_ACCESS_ROLE, 'payloads.get_account_aliases', '--accounts']),
+    (['-r', ORG_ACCESS_ROLE, 'payloads.get_account_aliases', '--accounts', 'blee']),
+    (['-r', ORG_ACCESS_ROLE, 'payloads.get_account_aliases', '--regions']),
+    (['-r', ORG_ACCESS_ROLE, 'payloads.get_account_aliases', '--regions', 'blee']),
+    (['-r', ORG_ACCESS_ROLE, 'payloads.get_account_aliases', '--service']),
+    (['-r', ORG_ACCESS_ROLE, 'payloads.get_account_aliases', '--service', 'blee']),
+    (['-r', ORG_ACCESS_ROLE, 'payloads.get_account_aliases', '--account-role']),
+    (['-r', ORG_ACCESS_ROLE, '--payload-file', '/no/such/file', 'get_account_aliases']),
+    (['-r', ORG_ACCESS_ROLE, '--payload-file', payloads.__file__, 'blee']),
+])
+def test_orgcrawler_failure(options_list):
+    org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
+    runner = CliRunner()
+    result = runner.invoke(
+        orgcrawler.main,
+        options_list,
+    )
     print(result.output_bytes)
     print(result.exit_code)
     print(result.exception)
     print(result.exc_info)
-    assert result.exit_code == 0
-    assert 0
+    assert result.exit_code != 0
 

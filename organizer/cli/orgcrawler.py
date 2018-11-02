@@ -86,4 +86,4 @@ def get_payload_function_from_file(file_name, payload_name):
 
 
 if __name__ == "__main__":
-    main()
+    main()  # pragma no cover
