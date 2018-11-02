@@ -1,44 +1,11 @@
 #!/usr/bin/env python
-
 """
 Script for querying AWS Organization resources
-
-Usage:
-    orgquery [-h][-V]
-    orgquery [-f format] [-m master_account_id] -r role COMMAND [ARGUMENT]
-
-Arguments:
-    COMMAND     An organization query command to run
-    ARGUMENT    A command argument to supply if needed
-
-Options:
-    -h, --help              Print help message
-    -V, --version           Display version info and exit
-    -f format               Output format:  "json" or "yaml". [Default: json]
-    -m master_account_id    The master account id for the organization
-    -r role                 The AWS role name to assume when running orgquery
-
-Available Query Commands:
-    dump
-    dump_accounts
-    dump_org_units
-    list_accounts_by_name
-    list_accounts_by_id
-    list_org_units_by_name
-    list_org_units_by_id
-    get_account ACCOUNT_IDENTIFIER
-    get_account_id_by_name ACCOUNT_NAME
-    get_account_name_by_id ACCOUNT_ID
-    get_org_unit_id OU_IDENTIFIER
-    list_accounts_in_ou OU_IDENTIFIER
-    list_accounts_in_ou_recursive OU_IDENTIFIER
-    list_org_units_in_ou OU_IDENTIFIER
-    list_org_units_in_ou_recursive OU_IDENTIFIER
 """
 
-import sys
-from docopt import docopt
-from organizer import __version__, orgs, utils
+import click
+from organizer import orgs, utils
+from organizer.cli.orgcrawler import print_version
 
 
 _COMMANDS = [
@@ -61,43 +28,96 @@ _COMMANDS_WITH_ARG = [
     'list_org_units_in_ou_recursive',
 ]
 AVAILABLE_COMMANDS = _COMMANDS + _COMMANDS_WITH_ARG
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
 def jsonfmt(obj):
     return utils.jsonfmt(obj, orgs.OrgObject.dump)
 
 
-def main():     # pragma: no cover
-    args = docopt(__doc__, version=__version__)
-    if len(sys.argv) == 1:
-        sys.exit(__doc__)
-    if args['COMMAND'] not in AVAILABLE_COMMANDS:
-        print('ERROR: "{}" not an available query command'.format(args['COMMAND']))
-        sys.exit(__doc__)
-    if args['COMMAND'] in _COMMANDS_WITH_ARG and not args['ARGUMENT']:
-        print('ERROR: Query command "{}" requires an argument'.format(args['COMMAND']))
-        sys.exit(__doc__)
-    if args['-f'] == 'json':
+def validate_command(ctx, param, value):
+    if value not in AVAILABLE_COMMANDS:
+        raise click.BadParameter('{}\n{}'.format(value, main.__doc__))
+    return value
+
+
+def validate_command_argument(ctx, param, value):
+    if ctx.params['command'] in _COMMANDS_WITH_ARG and not value:
+        raise click.UsageError('Query command "{}" requires an argument\n{}'.format(
+            ctx.params['command'], main.__doc__)
+        )
+    return value
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('command', callback=validate_command)
+@click.argument('argument', nargs=1, required=False, callback=validate_command_argument)
+@click.option('--role', '-r',
+    required=True,
+    help='IAM role to assume for accessing AWS Organization Master account.')
+@click.option('--format', '-f',
+    default='json',
+    type=click.Choice(['json', 'yaml']),
+    help='Output format [default: json]')
+@click.option('--version', '-V',
+    is_flag=True,
+    callback=print_version,
+    expose_value=False,
+    is_eager=True,
+    help='Display version info and exit.')
+def main(command, argument, role, format):
+    """
+Arguments:
+
+    \b
+    COMMAND     An organization query command to run
+    ARGUMENT    A command argument to supply if needed
+
+Available Query Commands:
+
+    \b
+    dump
+    dump_accounts
+    dump_org_units
+    list_accounts_by_name
+    list_accounts_by_id
+    list_org_units_by_name
+    list_org_units_by_id
+    get_account ACCOUNT_IDENTIFIER
+    get_account_id_by_name ACCOUNT_NAME
+    get_account_name_by_id ACCOUNT_ID
+    get_org_unit_id OU_IDENTIFIER
+    list_accounts_in_ou OU_IDENTIFIER
+    list_accounts_in_ou_recursive OU_IDENTIFIER
+    list_org_units_in_ou OU_IDENTIFIER
+    list_org_units_in_ou_recursive OU_IDENTIFIER
+
+Examples:
+
+    \b
+    orgquery -r OrgMasterRole list_accounts_by_name
+    orgquery -r OrgMasterRole -f json get_account_id_by_name webapps
+    """
+
+    print(command)
+    print(argument)
+    print(role)
+    print(format)
+
+    if format == 'json':
         formatter = jsonfmt
-    elif args['-f'] == 'yaml':
+    elif format == 'yaml':
         formatter = utils.yamlfmt
-    else:
-        print('ERROR: Print format must be either "json" or "yaml"')
-        sys.exit(__doc__)
 
-    if args['-m'] is None:
-        master_account_id = utils.get_master_account_id(args['-r'])
-    else:
-        master_account_id = args['-m']
-
-    org = orgs.Org(master_account_id, args['-r'])
+    master_account_id = utils.get_master_account_id(role)
+    org = orgs.Org(master_account_id, role)
     org.load()
-    cmd = eval('org.' + args['COMMAND'])
-    if args['ARGUMENT']:
-        print(formatter(cmd(args.get('ARGUMENT'))))
+    cmd = eval('org.' + command)
+    if argument:
+        print(formatter(cmd(argument)))
     else:
         print(formatter(cmd()))
 
 
-if __name__ == '__main__':      # pragma: no cover
+if __name__ == '__main__':
     main()
