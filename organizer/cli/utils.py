@@ -11,7 +11,7 @@ def setup_crawler(org_access_role, account_access_role=None, accounts=None, regi
     crawler_args = dict()
     my_crawler = crawlers.Crawler(
         my_org,
-        access_role=org_access_role,
+        access_role=account_access_role,
         accounts=accounts,
         regions=regions,
     )

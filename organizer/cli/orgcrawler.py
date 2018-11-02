@@ -35,10 +35,6 @@ def print_version(ctx, param, value):
     help='Comma separated list of AWS regions to crawl Default is all regions.')
 @click.option('--service',
     help='The AWS service used to select region list.')
-@click.option('--account-query',
-    help='The organizer query command used to select accounts.')
-@click.option('--account-query-arg',
-    help='The organizer query command argument.')
 @click.option('--payload-file', '-f',
     type=click.Path(exists=True),
     help='Path to file containing payload function.')
@@ -48,27 +44,22 @@ def print_version(ctx, param, value):
     expose_value=False,
     is_eager=True,
     help='Display version info and exit.')
-def main(master_role, account_role, payload_file, regions, accounts,
-        service, account_query, account_query_arg, payload, payload_arg):
+def main(master_role, account_role, regions, accounts,
+        service, payload_file, payload, payload_arg):
 
     ''' Where 'PAYLOAD' is name of the payload function to run in each account,
     and 'PAYLOAD_ARG' is, you guessed it, any payload function argument(s).
     Orgcrawler attempts to resolve payload function name from $PYTHON_PATH '''
 
     crawler_args = dict()
-    if account_query:
-        crawler_args['accounts'] = eval('org.' + account_query)(account_query_arg)
-    elif accounts:
+    if accounts:
         crawler_args['accounts'] = accounts.split(',')
-
     if service:
         crawler_args['regions'] = utils.regions_for_service(service)
     elif regions:
         crawler_args['regions'] = regions.split(',')
-
     if account_role:
-        crawler_args['access_role'] = account_role
-
+        crawler_args['account_access_role'] = account_role
     if payload_file:
         payload = get_payload_function_from_file(payload_file, payload)
     else:
@@ -76,7 +67,7 @@ def main(master_role, account_role, payload_file, regions, accounts,
 
     crawler = setup_crawler(master_role, **crawler_args)
     execution = crawler.execute(payload)
-    print(utils.jsonfmt(format_responses(execution)))
+    click.echo(utils.jsonfmt(format_responses(execution)))
 
 
 def get_payload_function_from_string(payload_name):
@@ -94,5 +85,5 @@ def get_payload_function_from_file(file_name, payload_name):
     return getattr(module, payload_name)
 
 
-if __name__ == "__main__":      # pragma: no cover
+if __name__ == "__main__":
     main()
