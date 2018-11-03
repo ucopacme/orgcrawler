@@ -1,9 +1,5 @@
-import os
-import sys
-import time
-import json
-import boto3
 import pytest
+from click.testing import CliRunner
 from moto import (
     mock_organizations,
     mock_sts,
@@ -11,46 +7,61 @@ from moto import (
 )
 
 import organizer
-from organizer import crawlers, orgs, utils
-from organizer.cli import orgcrawler, payloads
+from organizer import payloads
+from organizer.cli import orgcrawler
 from ..test_orgs import (
-    MASTER_ACCOUNT_ID,
     ORG_ACCESS_ROLE,
     SIMPLE_ORG_SPEC,
-    COMPLEX_ORG_SPEC,
     build_mock_org,
 )
-
-
-def test_get_payload_function_from_string():
-    payload = orgcrawler.get_payload_function_from_string(
-        'organizer.cli.payloads.set_account_alias'
-    )
-    assert payload == payloads.set_account_alias
-
-
-def test_get_payload_function_from_file():
-    payload_file = os.path.join(organizer.__path__.pop(), 'cli/payloads.py')
-    payload = orgcrawler.get_payload_function_from_file(payload_file, 'list_buckets')
-    assert payload.__code__.co_filename == payloads.list_buckets.__code__.co_filename
 
 
 @mock_sts
 @mock_organizations
 @mock_iam
-def test_process_execution_outputs():
+@pytest.mark.parametrize('options_list', [
+    (['--help']),
+    (['--version']),
+    (['--master-role', ORG_ACCESS_ROLE, 'organizer.payloads.get_account_aliases']),
+    (['-r', ORG_ACCESS_ROLE, '--accounts', 'account01,account02', 'organizer.payloads.get_account_aliases']),
+    (['-r', ORG_ACCESS_ROLE, '--regions', 'us-west-2', 'organizer.payloads.get_account_aliases']),
+    (['-r', ORG_ACCESS_ROLE, '--service', 'iam', 'organizer.payloads.get_account_aliases']),
+    (['-r', ORG_ACCESS_ROLE, 'organizer.payloads.get_account_aliases', '--account-role', ORG_ACCESS_ROLE]),
+    (['-r', ORG_ACCESS_ROLE, 'get_account_aliases', '--payload-file', payloads.__file__]),
+])
+def test_orgcrawler_success(options_list):
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
-    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    org.load()
-    crawler = crawlers.Crawler(org, access_role=ORG_ACCESS_ROLE)
-    crawler.load_account_credentials()
-    crawler.execute(payloads.set_account_alias)
-    execution = crawler.execute(payloads.get_account_aliases)
-    response = orgcrawler.process_execution_outputs(execution)
-    assert isinstance(response, str)
-    aliases = json.loads(response)
-    assert isinstance(aliases, list)
-    for item in aliases:
-        assert isinstance(item, dict)
-        assert 'Account' in item
-        assert 'Aliases' in item
+    runner = CliRunner()
+    result = runner.invoke(
+        orgcrawler.main,
+        options_list,
+    )
+    assert result.exit_code == 0
+
+
+@mock_sts
+@mock_organizations
+@mock_iam
+@pytest.mark.parametrize('options_list', [
+    (['--blee']),
+    (['--master-role']),
+    (['--master-role', 'blee']),
+    (['--master-role', ORG_ACCESS_ROLE, 'organizer.payloads.blee']),
+    (['-r', ORG_ACCESS_ROLE, 'organizer.payloads.get_account_aliases', '--accounts']),
+    (['-r', ORG_ACCESS_ROLE, 'organizer.payloads.get_account_aliases', '--accounts', 'blee']),
+    (['-r', ORG_ACCESS_ROLE, 'organizer.payloads.get_account_aliases', '--regions']),
+    (['-r', ORG_ACCESS_ROLE, 'organizer.payloads.get_account_aliases', '--regions', 'blee']),
+    (['-r', ORG_ACCESS_ROLE, 'organizer.payloads.get_account_aliases', '--service']),
+    (['-r', ORG_ACCESS_ROLE, 'organizer.payloads.get_account_aliases', '--service', 'blee']),
+    (['-r', ORG_ACCESS_ROLE, 'organizer.payloads.get_account_aliases', '--account-role']),
+    (['-r', ORG_ACCESS_ROLE, '--payload-file', '/no/such/file', 'get_account_aliases']),
+    (['-r', ORG_ACCESS_ROLE, '--payload-file', payloads.__file__, 'blee']),
+])
+def test_orgcrawler_failure(options_list):
+    org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
+    runner = CliRunner()
+    result = runner.invoke(
+        orgcrawler.main,
+        options_list,
+    )
+    assert result.exit_code != 0

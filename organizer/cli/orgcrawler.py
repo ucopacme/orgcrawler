@@ -1,103 +1,77 @@
 #!/usr/bin/env python
 
-"""
-Usage:
-    orgcrawler  [-h][-V] [-m id] -r role [-a role] [-f file] PAYLOAD [ARGS...]
-                [--regions csvlist | --regions-for-service name]
-                [--accounts csvlist | --account-query command]
-                [--account-query-arg arg]
+import click
 
-Arguments:
-    PAYLOAD         Name of the payload function to run in each account
-                    Orgcrawler attempts to resolve this name from $PYTHON_PATH
-    ARGS            Argument list for PAYLOAD
-
-Options:
-    -h, --help                  Print help message
-    -V, --version               Display version info and exit
-    -m, --master-account-id id  The master account id of the organization
-    -r, --master-role role      The IAM role to assume in master account
-    -a, --account-role role     The IAM role to assume in organization accounts
-                                if different from --master-role
-    -f, --payload-file file     Path to file containing payload function
-    --regions csvlist           Comma separated list of AWS regions to crawl
-                                Default is all regions
-    --accounts csvlist          Comma separated list of accounts to crawl
-                                Can be account Id, name or alias
-                                Default is all accounts in organization
-    --regions-for-service name  The AWS service used to select region list
-    --account-query command     The organizer query command used to select
-                                accounts
-    --account-query-arg arg     The organizer query command argument
-
-"""
-
-import os
-import sys
-import importlib
-
-from docopt import docopt
-
-from organizer import __version__, crawlers, orgs, utils
+import organizer
+from organizer.utils import jsonfmt, regions_for_service
+from organizer.cli.utils import (
+    setup_crawler,
+    format_responses,
+    get_payload_function_from_string,
+    get_payload_function_from_file,
+)
 
 
-# ISSUE: not printing account, region names with response outputs
-def process_execution_outputs(execution):
-    collector = []
-    for response in execution.responses:
-        d = dict(Account=response.account.name)
-        d.update(response.payload_output)
-        collector.append(d)
-    return(utils.jsonfmt(collector))
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
-def get_payload_function_from_string(payload_name):
-    module_name, _, function_name = payload_name.rpartition('.')
-    module = importlib.import_module(module_name)
-    return getattr(module, function_name)
+def print_version(ctx, param, value):
+    if not value or ctx.resilient_parsing:
+        return
+    click.echo(organizer.__version__)
+    ctx.exit()
 
 
-def get_payload_function_from_file(file_name, payload_name):
-    file_name = os.path.expanduser(file_name)
-    module_dir = os.path.dirname(file_name)
-    sys.path.append(os.path.abspath(module_dir))
-    module_name = os.path.basename(file_name).replace('.py', '')
-    module = importlib.import_module(module_name)
-    return getattr(module, payload_name)
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('payload')
+@click.argument('payload_arg', nargs=-1)
+@click.option('--master-role', '-r',
+    required=True,
+    help='IAM role to assume for accessing AWS Organization Master account.')
+@click.option('--account-role', '-a',
+    help='IAM role to assume for accessing AWS Organization child accounts. '
+         'Defaults to "--master-role".')
+@click.option('--accounts',
+    help='Comma separated list of accounts to crawl. Can be account Id, name or '
+         'alias. Default is all accounts in organization.')
+@click.option('--regions',
+    help='Comma separated list of AWS regions to crawl Default is all regions.')
+@click.option('--service',
+    help='The AWS service used to select region list.')
+@click.option('--payload-file', '-f',
+    type=click.Path(exists=True),
+    help='Path to file containing payload function.')
+@click.option('--version', '-V',
+    is_flag=True,
+    callback=print_version,
+    expose_value=False,
+    is_eager=True,
+    help='Display version info and exit.')
+def main(master_role, account_role, regions, accounts,
+        service, payload_file, payload, payload_arg):
 
-
-def main():     # pragma: no cover
-    args = docopt(__doc__, version=__version__)
-
-    if args['--master-account-id'] is None:
-        args['--master-account-id'] = utils.get_master_account_id(args['--master-role'])
+    ''' Where 'PAYLOAD' is name of the payload function to run in each account,
+    and 'PAYLOAD_ARG' is, you guessed it, any payload function argument(s).
+    Orgcrawler attempts to resolve payload function name from $PYTHON_PATH '''
 
     crawler_args = dict()
-    if args['--account-query']:
-        crawler_args['accounts'] = eval('org.' + args['--account-query'])(args['--account-query-arg'])
-    elif args['--accounts']:
-        crawler_args['accounts'] = args['--accounts'].split(',')
-
-    if args['--regions-for-service']:
-        crawler_args['regions'] = utils.regions_for_service(args['--regions-for-service'])
-    elif args['--regions']:
-        crawler_args['regions'] = args['--regions'].split(',')
-
-    if args['--account-role']:
-        crawler_args['access_role'] = args['--account-role']
-
-    if args['--payload-file']:
-        payload = get_payload_function_from_file(args['--payload-file'], args['PAYLOAD'])
+    if accounts:
+        crawler_args['accounts'] = accounts.split(',')
+    if service:
+        crawler_args['regions'] = regions_for_service(service)
+    elif regions:
+        crawler_args['regions'] = regions.split(',')
+    if account_role:
+        crawler_args['account_access_role'] = account_role
+    if payload_file:
+        payload = get_payload_function_from_file(payload_file, payload)
     else:
-        payload = get_payload_function_from_string(args['PAYLOAD'])
+        payload = get_payload_function_from_string(payload)
 
-    org = orgs.Org(args['--master-account-id'], args['--master-role'])
-    org.load()
-    crawler = crawlers.Crawler(org, **crawler_args)
-    crawler.load_account_credentials()
+    crawler = setup_crawler(master_role, **crawler_args)
     execution = crawler.execute(payload)
-    print(process_execution_outputs(execution))
+    click.echo(jsonfmt(format_responses(execution)))
 
 
-if __name__ == "__main__":      # pragma: no cover
-    main()
+if __name__ == "__main__":
+    main()  # pragma no cover
