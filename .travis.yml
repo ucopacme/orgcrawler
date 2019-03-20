@@ -8,7 +8,6 @@ before_install:
   - export BOTO_CONFIG=/dev/null
 install:
   - pip install -r requirements.txt
-  - pip install https://github.com/spulec/moto/archive/master.zip
   - pip install .
   - pip list
 script: 

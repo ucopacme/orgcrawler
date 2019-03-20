@@ -1,5 +1,6 @@
-pytest
+pytest>=3.6
 pytest-cov
+moto
 flake8
 sphinx
 sphinx-autoapi

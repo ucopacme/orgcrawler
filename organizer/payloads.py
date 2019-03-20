@@ -1,6 +1,7 @@
 import boto3
 import re
 
+
 def set_account_alias(region, account):     # pragma: no cover
     client = boto3.client('iam', region_name=region, **account.credentials)
     client.create_account_alias(AccountAlias=account.name)
@@ -60,10 +61,7 @@ def check_cloudtrail_status(region, account):   # pragma: no cover
         x = re.findall(r"\BloudTrail", trail["Name"])
         if x:
             trail_accounts.append(dict(
-                Name=trail['Name'], 
+                Name=trail['Name'],
                 status="enabled",
             ))
     return dict(TrailAccounts=trail_accounts)
-
-
-
