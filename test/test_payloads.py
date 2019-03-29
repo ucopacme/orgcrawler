@@ -1,3 +1,4 @@
+import boto3
 from moto import (
     mock_organizations,
     mock_sts,
@@ -8,6 +9,7 @@ from moto import (
 )
 
 from organizer import payloads
+from organizer.utils import yamlfmt
 from organizer.cli.utils import setup_crawler
 from .test_orgs import (
     ORG_ACCESS_ROLE,
@@ -19,73 +21,44 @@ from .test_orgs import (
 @mock_sts
 @mock_organizations
 @mock_iam
-def test_get_account_aliases():
+def test_get_set_account_aliases():
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
     crawler = setup_crawler(ORG_ACCESS_ROLE)
     account = crawler.accounts[0]
     region = crawler.regions[0]
-
     response = payloads.set_account_alias(region, account)
-    print(response)
-
     response = payloads.get_account_aliases(region, account)
-    print(response)
-    assert 0
-
+    assert response['Aliases'] == account.name
+    response = payloads.set_account_alias(region, account, alias='test_alias')
+    response = payloads.get_account_aliases(region, account)
+ 
 
 @mock_sts
 @mock_organizations
 @mock_s3
-def test_get_account_aliases():
+def test_create_list_buckets():
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
     crawler = setup_crawler(ORG_ACCESS_ROLE)
     account = crawler.accounts[0]
     region = crawler.regions[0]
-    bucket_name = 'test_payloads_bucket'
-
-    response = payloads.create_bucket(region, account, bucket_name)
-    print(response)
-
+    response = payloads.create_bucket(region, account, 'test_bucket')
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200
     response = payloads.list_buckets(region, account)
-    print(response)
-    assert 0
-
+    assert response['Buckets'][0] == 'test_bucket-' + account.id
+ 
 
 @mock_sts
 @mock_organizations
 @mock_route53
-def test_get_account_aliases():
+def test_list_hosted_zones():
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
     crawler = setup_crawler(ORG_ACCESS_ROLE)
     account = crawler.accounts[0]
     region = crawler.regions[0]
-    domain_name = 'payloads.orgcrawler.test'
-
-    response = payloads.create_hosted_zone(region, account, domain_name)
-    print(response)
-
+    client = boto3.client('route53', region_name=region, **account.credentials)
+    client.create_hosted_zone(
+        Name='test_zone.example.com',
+        CallerReference='a_unique_string'
+    )
     response = payloads.list_hosted_zones(region, account)
-    print(response)
-    assert 0
-
-'''
-@mock_sts
-@mock_organizations
-@mock_config
-def test_get_account_aliases():
-    org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
-    crawler = setup_crawler(ORG_ACCESS_ROLE)
-    account = crawler.accounts[0]
-    region = crawler.regions[0]
-
-    response = payloads.config_resource_counts(region, account)
-    print(response)
-
-    response = payloads.config_describe_rules(region, account)
-    print(response)
-    assert 0
-
-    response = payloads.config_describe_recorder_status(region, account)
-    print(response)
-    assert 0
-'''
+    assert response['HostedZones'][0]['Name'] == 'test_zone.example.com.'

@@ -1,9 +1,11 @@
 import boto3
 
 
-def set_account_alias(region, account):
+def set_account_alias(region, account, alias=None):
     client = boto3.client('iam', region_name=region, **account.credentials)
-    client.create_account_alias(AccountAlias=account.name)
+    if alias is None:
+        alias = account.name
+    client.create_account_alias(AccountAlias=alias)
     return
 
 
@@ -13,26 +15,19 @@ def get_account_aliases(region, account):
     return dict(Aliases=', '.join(response['AccountAliases']))
 
 
-def create_bucket(region, account, bucket_name):
+def create_bucket(region, account, bucket_prefix):
     client = boto3.client('s3', region_name=region, **account.credentials)
-    return client.create_bucket(
-        Bucket = bucket_name,
-        CreateBucketConfiguration={'LocationConstraint': region}
+    response = client.create_bucket(
+        Bucket=bucket_prefix + '-' + account.id,
+        CreateBucketConfiguration={'LocationConstraint': region},
     )
+    return response
 
 
 def list_buckets(region, account):
     client = boto3.client('s3', region_name=region, **account.credentials)
     response = client.list_buckets()
     return dict(Buckets=[b['Name'] for b in response['Buckets']])
-
-
-def create_hosted_zone(region, account, domain_name):
-    client = boto3.client('route53', region_name=region, **account.credentials)
-    return client.create_hosted_zone(
-        Name=domain_name,
-        CallerReference=domain_name,
-    )
 
 
 def list_hosted_zones(region, account):
@@ -49,19 +44,19 @@ def list_hosted_zones(region, account):
     return dict(HostedZones=hosted_zones)
 
 
-def config_resource_counts(region, account):
+def config_resource_counts(region, account):        # pragma: no cover
     client = boto3.client('config', region_name=region, **account.credentials)
     response = client.get_discovered_resource_counts()
     return dict(resourceCounts=response['resourceCounts'])
 
 
-def config_describe_rules(region, account):
+def config_describe_rules(region, account):     # pragma: no cover
     client = boto3.client('config', region_name=region, **account.credentials)
     response = client.describe_config_rules()
     return dict(ConfigRules=response['ConfigRules'])
 
 
-def config_describe_recorder_status(region, account):
+def config_describe_recorder_status(region, account):       # pragma: no cover
     client = boto3.client('config', region_name=region, **account.credentials)
     response = client.describe_configuration_recorder_status()
     return dict(ConfigurationRecordersStatus=response['ConfigurationRecordersStatus'])
