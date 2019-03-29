@@ -69,7 +69,7 @@ def main(master_role, account_role, regions, accounts,
         payload = get_payload_function_from_string(payload)
 
     crawler = setup_crawler(master_role, **crawler_args)
-    execution = crawler.execute(payload)
+    execution = crawler.execute(payload, *payload_arg)
     click.echo(jsonfmt(format_responses(execution)))
 
 
