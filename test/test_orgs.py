@@ -119,7 +119,7 @@ def test_org():
 
 @mock_sts
 @mock_organizations
-def test__get_org_client():
+def test_get_org_client():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     client = org._get_org_client()
     assert str(type(client)).find('botocore.client.Organizations') > 0
