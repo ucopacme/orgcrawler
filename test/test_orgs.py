@@ -12,7 +12,7 @@ import pytest
 import moto
 from moto import mock_organizations, mock_sts
 
-from organizer import utils, orgs, crawlers
+from orgcrawler import utils, orgs, crawlers
 
 ORG_ACCESS_ROLE='myrole'
 MASTER_ACCOUNT_ID='123456789012'

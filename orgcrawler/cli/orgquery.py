@@ -4,8 +4,8 @@ Script for querying AWS Organization resources
 """
 
 import click
-from organizer import orgs, utils
-from organizer.cli.orgcrawler import print_version
+from orgcrawler import orgs, utils
+from orgcrawler.cli.orgcrawler import print_version
 
 
 _COMMANDS = [

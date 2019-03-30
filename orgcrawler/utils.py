@@ -23,14 +23,14 @@ def _(val):
     return val.isoformat()
 
 
-# @to_serializable.register(organizer.orgs.OrgObject)
+# @to_serializable.register(orgcrawler.orgs.OrgObject)
 # def _(val):
 #     return val.dump()
 #
 # Unfortunateley, This does not work:
-#   File "/home/agould/git-repos/github/ucopacme/organizer/organizer/utils.py", line 34, in <module>
+#   File "/home/agould/git-repos/github/ucopacme/orgcrawler/orgcrawler/utils.py", line 34, in <module>
 #     def ts_org_object(val: orgs.OrgObject):
-# AttributeError: module 'organizer.orgs' has no attribute 'OrgObject'
+# AttributeError: module 'orgcrawler.orgs' has no attribute 'OrgObject'
 
 
 def jsonfmt(obj, default=to_serializable):

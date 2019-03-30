@@ -21,7 +21,7 @@ How to Contribute
 Report Bugs
 ***********
 
-Before submitting a bug, please check our `issues page <https://github.com/ucopacme/organizer/issues>`_ to see if it's already been reported.
+Before submitting a bug, please check our `issues page <https://github.com/ucopacme/orgcrawler/issues>`_ to see if it's already been reported.
 
 When reporting a bug, fill out the required template, and please include as much detail as possible as it helps us resolve issues faster.
 
@@ -58,16 +58,16 @@ A good pull request:
 Get Started
 -----------
 
-1. Fork the ``organizer`` repository on GitHub.
+1. Fork the ``orgcrawler`` repository on GitHub.
 2. Clone your fork locally::
 
-    $ git clone git@github.org:<github_username>/organizer.git
+    $ git clone git@github.org:<github_username>/orgcrawler.git
 
-3. Install organizer for development (we recommend you use a `virtual environment <http://docs.python-guide.org/en/latest/dev/virtualenvs/>`_):
+3. Install orgcrawler for development (we recommend you use a `virtual environment <http://docs.python-guide.org/en/latest/dev/virtualenvs/>`_):
 
    .. code-block:: shell
 
-    $ cd organizer/
+    $ cd orgcrawler/
     $ pip install -r requirements.txt
     $ pip install -e .
 

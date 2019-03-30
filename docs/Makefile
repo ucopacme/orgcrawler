@@ -4,13 +4,13 @@
 # You can set these variables from the command line.
 SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
-SPHINXPROJ    = Organizer
+SPHINXPROJ    = OrgCrawler
 SOURCEDIR     = .
 BUILDDIR      = _build
 APIDOCBUILD      = sphinx-apidoc
-APIDOCHEADER     = 'Organizer API'
+APIDOCHEADER     = 'OrgCrawler API'
 APIDOCBUILDDIR   = $(SOURCEDIR)/_api
-APIDOCSOURCEDIR  = ../organizer
+APIDOCSOURCEDIR  = ../orgcrawler
 
 # Put it first so that "make" without argument is like "make help".
 help:
