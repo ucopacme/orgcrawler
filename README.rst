@@ -1,5 +1,5 @@
-Getting Started with Organizer
-==============================
+Getting Started with OrgCrawler
+===============================
 
 A toolset for managing AWS resources across an organization
 
@@ -7,23 +7,23 @@ A toolset for managing AWS resources across an organization
 Installation
 ------------
 
-organizer is not yet up on pypi.  Install it directly from github::
+orgcrawler is not yet up on pypi.  Install it directly from github::
 
-  pip install https://github.com/ucopacme/organizer/archive/master.zip
+  pip install https://github.com/ucopacme/orgcrawler/archive/master.zip
 
-Currently organizer only supports python 3.6.
+Currently orgcrawler only supports python 3.6.
 
 
 The Org object
 --------------
 
-The organizer.orgs.Org class provides a data model and methods for querying AWS
+The orgcrawler.orgs.Org class provides a data model and methods for querying AWS
 organizations resources.
 
-Create an organizer.orgs.Org instance::
+Create an orgcrawler.orgs.Org instance::
 
-  master_account_id = organizer.utils.get_master_account_id('myOrgMasterRole')
-  my_org = organizer.orgs.Org(master_account_id, 'myOrgMasterRole')
+  master_account_id = orgcrawler.utils.get_master_account_id('myOrgMasterRole')
+  my_org = orgcrawler.orgs.Org(master_account_id, 'myOrgMasterRole')
 
 Load your organization's account and organizational unit resources into your instance::
 
@@ -40,12 +40,12 @@ Query your organization's account and organizational unit resources::
 The Crawler object
 ------------------
 
-The organizer.crawlers.Crawler object provides a framework for running python
+The orgcrawler.crawlers.Crawler object provides a framework for running python
 functions in all accounts and regions in your organization or a subset thereof. 
 
-Create an organizer.crawlers.Crawler instance::
+Create an orgcrawler.crawlers.Crawler instance::
 
-  my_crawler = organizer.crawlers.Crawler(
+  my_crawler = orgcrawler.crawlers.Crawler(
       my_org,
       access_role='myAccountAdminRole',
       accounts=test_accounts,
@@ -68,7 +68,7 @@ Requirments for python functions called with Crawler.execute()
 
 The Crawler.execute method calls your custom function with the following
 parameters: ``region, account, *args``, where ``region`` is a string,
-``account`` is organizer.orgs.OrgAccount instance, and ``args`` is a list of
+``account`` is orgcrawler.orgs.OrgAccount instance, and ``args`` is a list of
 positional parameters to pass to your function.  Your function must create its
 own boto3 client for whatever services it will use::
 
@@ -77,14 +77,14 @@ own boto3 client for whatever services it will use::
       response = client.list_buckets()
 
 
-Organizer CLI Scripts
----------------------
+OrgCrawler CLI Scripts
+----------------------
 
-This package contains two console scripts: ``organizer`` and ``orgcrawler``.
+This package contains two console scripts: ``orgquery`` and ``orgcrawler``.
 These attempt to provide a generic interface for running organization queries
 and custom crawler functions.  At the very least they provide concrete examples
-for how to build organizer applications.
+for how to build orgcrawler applications.
 
-See ``organizer/cli/{organizer|orgcrawler}.py`` for code.
+See ``orgcrawler/cli/{orgquery|orgcrawler}.py`` for code.
 
 Run with the ``--help`` option for usage.  

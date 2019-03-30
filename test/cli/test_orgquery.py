@@ -4,8 +4,8 @@ from moto import (
     mock_organizations,
     mock_sts,
 )
-from organizer import orgs, utils
-from organizer.cli import orgquery
+from orgcrawler import orgs, utils
+from orgcrawler.cli import orgquery
 from ..test_orgs import (
     MASTER_ACCOUNT_ID,
     ORG_ACCESS_ROLE,

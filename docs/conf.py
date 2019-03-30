@@ -19,7 +19,7 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'Organizer'
+project = 'OrgCrawler'
 copyright = '2018, Ashley Gould'
 author = 'Ashley Gould'
 
@@ -45,7 +45,7 @@ extensions = [
 
 # Document Python Code - for use with autoapi.extension
 autoapi_type = 'python'
-autoapi_dirs = ['../organizer']
+autoapi_dirs = ['../orgcrawler']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -107,7 +107,7 @@ html_static_path = ['_static']
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'Organizerdoc'
+htmlhelp_basename = 'OrgCrawlerdoc'
 
 
 # -- Options for LaTeX output ------------------------------------------------
@@ -134,7 +134,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'Organizer.tex', 'Organizer Documentation',
+    (master_doc, 'OrgCrawler.tex', 'OrgCrawler Documentation',
      'Ashley Gould', 'manual'),
 ]
 
@@ -144,7 +144,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'organizer', 'Organizer Documentation',
+    (master_doc, 'organizer', 'OrgCrawler Documentation',
      [author], 1)
 ]
 
@@ -155,8 +155,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'Organizer', 'Organizer Documentation',
-     author, 'Organizer', 'One line description of project.',
+    (master_doc, 'OrgCrawler', 'OrgCrawler Documentation',
+     author, 'OrgCrawler', 'One line description of project.',
      'Miscellaneous'),
 ]
 

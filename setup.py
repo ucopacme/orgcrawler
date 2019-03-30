@@ -11,18 +11,18 @@ with io.open(os.path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 # Load the package's __init__.py module as a dictionary.
 about = {}
-with open(os.path.join(here, 'organizer/__init__.py')) as f:
+with open(os.path.join(here, 'orgcrawler/__init__.py')) as f:
     exec(f.read(), about)
 
 setup(
-    name='organizer',
+    name='orgcrawler',
     version=about['__version__'],
     description='Tools for working with AWS Organizations',
     long_description=long_description,
-    url='https://github.com/ucopacme/organizer',
+    url='https://github.com/ucopacme/orgcrawler',
     keywords='aws organizations boto3',
-    author=['Ashley Gould', 'Eric Odell'],
-    author_email=['agould@ucop.edu', 'eodell@ucop.edu'],
+    author=['Ashley Gould', 'Santhosh Katakam'],
+    author_email=['agould@ucop.edu', 'santhosh.katakam@ucop.edu'],
     license='GPLv3',
     classifiers=[
         'Development Status :: 3 - Alpha',
@@ -48,8 +48,8 @@ setup(
     zip_safe=False,
     entry_points={
         'console_scripts': [
-            'orgquery=organizer.cli.orgquery:main',
-            'orgcrawler=organizer.cli.orgcrawler:main',
+            'orgquery=orgcrawler.cli.orgquery:main',
+            'orgcrawler=orgcrawler.cli.orgcrawler:main',
         ],
     },
 )
