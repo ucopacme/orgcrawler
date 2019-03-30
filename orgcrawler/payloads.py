@@ -2,25 +2,36 @@ import boto3
 import re
 
 
-def set_account_alias(region, account):     # pragma: no cover
+def set_account_alias(region, account, alias=None):
     client = boto3.client('iam', region_name=region, **account.credentials)
-    client.create_account_alias(AccountAlias=account.name)
+    if alias is None:
+        alias = account.name
+    client.create_account_alias(AccountAlias=alias)
     return
 
 
-def get_account_aliases(region, account):       # pragma: no cover
+def get_account_aliases(region, account):
     client = boto3.client('iam', region_name=region, **account.credentials)
     response = client.list_account_aliases()
     return dict(Aliases=', '.join(response['AccountAliases']))
 
 
-def list_buckets(region, account):      # pragma: no cover
+def create_bucket(region, account, bucket_prefix):
+    client = boto3.client('s3', region_name=region, **account.credentials)
+    response = client.create_bucket(
+        Bucket=bucket_prefix + '-' + account.id,
+        CreateBucketConfiguration={'LocationConstraint': region},
+    )
+    return response
+
+
+def list_buckets(region, account):
     client = boto3.client('s3', region_name=region, **account.credentials)
     response = client.list_buckets()
     return dict(Buckets=[b['Name'] for b in response['Buckets']])
 
 
-def list_hosted_zones(region, account):     # pragma: no cover
+def list_hosted_zones(region, account):
     client = boto3.client('route53', region_name=region, **account.credentials)
     response = client.list_hosted_zones()
     hosted_zones = []
@@ -46,11 +57,11 @@ def config_describe_rules(region, account):     # pragma: no cover
     return dict(ConfigRules=response['ConfigRules'])
 
 
-def config_describe_recorder_status(region, account):       # pragma: no cover
+def config_describe_recorder_status(region, account):
     client = boto3.client('config', region_name=region, **account.credentials)
     response = client.describe_configuration_recorder_status()
-    return dict(ConfigurationRecordersStatus=response['ConfigurationRecordersStatus'])
-    # return dict(ConfigurationRecordersStatus=response['blee'])
+    response.pop('ResponseMetadata')
+    return response
 
 
 def check_cloudtrail_status(region, account):   # pragma: no cover
