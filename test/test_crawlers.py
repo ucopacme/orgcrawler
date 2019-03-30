@@ -11,7 +11,7 @@ from moto import (
     mock_s3,
 )
 
-from organizer import crawlers, orgs, utils
+from orgcrawler import crawlers, orgs, utils
 from .test_orgs import (
     MASTER_ACCOUNT_ID,
     ORG_ACCESS_ROLE,
@@ -143,13 +143,13 @@ def test_crawler_init():
     crawler = crawlers.Crawler(org,
         accounts=org.list_accounts_in_ou('ou01'),
         regions=utils.regions_for_service('iam'),
-        access_role='OrganizerAdmin',
+        access_role='OrgCrawlerAdmin',
     )
     assert len(crawler.accounts) == 3
     for account in crawler.accounts:
         assert isinstance(account, orgs.OrgAccount)
     assert crawler.regions == [crawlers.DEFAULT_REGION]
-    assert crawler.access_role == 'OrganizerAdmin'
+    assert crawler.access_role == 'OrgCrawlerAdmin'
 
     with pytest.raises(ValueError) as e:
         crawler = crawlers.Crawler(org, accounts=dict(key='bogus'))

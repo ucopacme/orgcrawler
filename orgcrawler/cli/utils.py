@@ -1,8 +1,8 @@
 import os
 import sys
 import importlib
-from organizer import crawlers, orgs
-from organizer.utils import get_master_account_id
+from orgcrawler import crawlers, orgs
+from orgcrawler.utils import get_master_account_id
 
 
 def get_payload_function_from_string(payload_name):
@@ -22,7 +22,7 @@ def get_payload_function_from_file(file_name, payload_name):
 
 def setup_crawler(org_access_role, account_access_role=None, accounts=None, regions=None):
     """
-    Returns a fully loaded organizer.crawlers.Crawler object
+    Returns a fully loaded orgcrawler.crawlers.Crawler object
     """
     master_account_id = get_master_account_id(org_access_role)
     my_org = orgs.Org(master_account_id, org_access_role)

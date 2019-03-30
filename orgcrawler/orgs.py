@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import boto3
 from botocore.exceptions import ClientError
 
-from organizer import utils
+from orgcrawler import utils
 
 
 class Org(object):
@@ -30,7 +30,7 @@ class Org(object):
             resource data.
         cache_file_max_age (int): Cache file time out in minutes [Default: 60].
         cache_dir (str): Directory where to save cache files
-            [Default: ``~/.aws/organizer-cache``].
+            [Default: ``~/.aws/orgcrawler-cache``].
         cache_file (str): Cache file name
             [Default: ``cache_file-${master_account_id}``].
 
@@ -52,7 +52,7 @@ class Org(object):
             master_account_id,
             org_access_role,
             cache_file_max_age=60,
-            cache_dir='~/.aws/organizer-cache',
+            cache_dir='~/.aws/orgcrawler-cache',
             cache_file=None):
         self.master_account_id = master_account_id
         self.access_role = org_access_role

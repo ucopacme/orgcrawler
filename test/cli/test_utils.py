@@ -6,10 +6,10 @@ from moto import (
     mock_iam,
 )
 
-import organizer
-from organizer import crawlers, payloads
-from organizer.utils import yamlfmt
-from organizer.cli.utils import (
+import orgcrawler
+from orgcrawler import crawlers, payloads
+from orgcrawler.utils import yamlfmt
+from orgcrawler.cli.utils import (
     get_payload_function_from_string,
     get_payload_function_from_file,
     setup_crawler,
@@ -25,14 +25,14 @@ from ..test_orgs import (
 
 def test_get_payload_function_from_string():
     payload = get_payload_function_from_string(
-        'organizer.payloads.get_account_aliases'
+        'orgcrawler.payloads.get_account_aliases'
     )
     assert payload == payloads.get_account_aliases
 
 
 def test_get_payload_function_from_file():
-    print(organizer.__path__)
-    payload_file = os.path.join(organizer.__path__[0], 'payloads.py')
+    print(orgcrawler.__path__)
+    payload_file = os.path.join(orgcrawler.__path__[0], 'payloads.py')
     payload = get_payload_function_from_file(payload_file, 'list_buckets')
     assert payload.__code__.co_filename == payloads.list_buckets.__code__.co_filename
 
