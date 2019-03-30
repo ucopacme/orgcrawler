@@ -57,11 +57,11 @@ def config_describe_rules(region, account):     # pragma: no cover
     return dict(ConfigRules=response['ConfigRules'])
 
 
-def config_describe_recorder_status(region, account):       # pragma: no cover
+def config_describe_recorder_status(region, account):
     client = boto3.client('config', region_name=region, **account.credentials)
     response = client.describe_configuration_recorder_status()
-    return dict(ConfigurationRecordersStatus=response['ConfigurationRecordersStatus'])
-    # return dict(ConfigurationRecordersStatus=response['blee'])
+    response.pop('ResponseMetadata')
+    return response
 
 
 def check_cloudtrail_status(region, account):   # pragma: no cover
