@@ -24,8 +24,8 @@ setup(
     long_description_content_type='text/x-rst',
     url='https://github.com/ucopacme/orgcrawler',
     keywords='aws organizations boto3',
-    author=['Ashley Gould', 'Santhosh Katakam'],
-    author_email=['agould@ucop.edu', 'santhosh.katakam@ucop.edu'],
+    author='Ashley Gould - University of California Office of the President',
+    author_email='agould@ucop.edu',
     license='GPLv3',
     classifiers=[
         'Development Status :: 3 - Alpha',
