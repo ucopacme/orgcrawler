@@ -6,10 +6,12 @@ import io
 from setuptools import setup, find_packages
 
 here = os.path.abspath(os.path.dirname(__file__))
+
+# gather the package's long description from the README
 with io.open(os.path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = '\n' + f.read()
 
-# Load the package's __init__.py module as a dictionary.
+# load the package's __init__.py module as a dictionary.
 about = {}
 with open(os.path.join(here, 'orgcrawler/__init__.py')) as f:
     exec(f.read(), about)
@@ -19,10 +21,11 @@ setup(
     version=about['__version__'],
     description='Tools for working with AWS Organizations',
     long_description=long_description,
+    long_description_content_type='text/x-rst',
     url='https://github.com/ucopacme/orgcrawler',
     keywords='aws organizations boto3',
-    author=['Ashley Gould', 'Santhosh Katakam'],
-    author_email=['agould@ucop.edu', 'santhosh.katakam@ucop.edu'],
+    author='Ashley Gould - University of California Office of the President',
+    author_email='agould@ucop.edu',
     license='GPLv3',
     classifiers=[
         'Development Status :: 3 - Alpha',
@@ -37,13 +40,7 @@ setup(
         'PyYAML',
         'click',
     ],
-    packages=find_packages(
-        '.',
-        exclude=[
-            'bin',
-            'test',
-        ],
-    ),
+    packages=find_packages(exclude=['dist', 'test']),
     include_package_data=True,
     zip_safe=False,
     entry_points={
