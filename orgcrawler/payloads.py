@@ -1,7 +1,7 @@
 import boto3
 import re
 
-def get_iam_users(region,account):
+def get_iam_users(region, account):
     client = boto3.client('iam', region_name=region, **account.credentials)
     response = client.list_users()
     return response
