@@ -1,6 +1,12 @@
 import boto3
 import re
 
+def get_iam_users(region,account):
+    client = boto3.client('iam', region_name=region, **account.credentials)
+    response = client.list_users()
+    return response
+
+
 
 def set_account_alias(region, account, alias=None):
     client = boto3.client('iam', region_name=region, **account.credentials)
