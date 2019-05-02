@@ -2,7 +2,7 @@ import boto3
 import re
 
 
-def status_config_svcs():
+def status_config_svcs('config', region_name=region, **account.credentials):
    response = client.describe_configuration_recorder_status(
        ConfigurationRecorderNames=[] )
    for key  in response['ConfigurationRecordersStatus']:
