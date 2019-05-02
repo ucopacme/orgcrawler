@@ -6,6 +6,7 @@ def status_config_svcs(region, account ):
    client = boto3.client('config', region_name=region, **account.credentials)
    response = client.describe_configuration_recorder_status(
        ConfigurationRecorderNames=[] )
+   return reponse
    for key  in response['ConfigurationRecordersStatus']:
        return("Config Reporter Status:  " + key['lastStatus'])
        running = +key['recording']
