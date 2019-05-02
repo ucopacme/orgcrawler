@@ -1,6 +1,19 @@
 import boto3
 import re
 
+
+def status_config_svcs():
+   response = client.describe_configuration_recorder_status(
+       ConfigurationRecorderNames=[] )
+   for key  in response['ConfigurationRecordersStatus']:
+       return("Config Reporter Status:  " + key['lastStatus'])
+       running = +key['recording']
+       if running > 0:
+             return("Config Recording Status: RUNNING")
+       else:
+             return("Config Recording status: STOPPED")
+
+
 def get_iam_users(region, account):
     client = boto3.client('iam', region_name=region, **account.credentials)
     response = client.list_users()
