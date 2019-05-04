@@ -4,16 +4,14 @@ import re
 
 def status_config_svcs(region, account ):
    client = boto3.client('config', region_name=region, **account.credentials)
-   response = client.describe_configuration_recorder_status(
-       ConfigurationRecorderNames=[] )
-   return reponse
-   for key  in response['ConfigurationRecordersStatus']:
-       return("Config Reporter Status:  " + key['lastStatus'])
-       running = +key['recording']
-       if running > 0:
-             return("Config Recording Status: RUNNING")
-       else:
-             return("Config Recording status: STOPPED")
+   response = client.describe_configuration_recorder_status()
+   response.pop('ResponseMetadata')
+   if response['ConfigurationRecordersStatus']:
+       state = dict(recording=True)
+   else:
+       state = dict(recording=False)
+   return dict(ConfigurationRecordersStatus=state)
+
 
 
 def get_iam_users(region, account):
