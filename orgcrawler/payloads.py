@@ -2,6 +2,17 @@ import boto3
 import re
 
 
+def status_config_svcs(region, account ):    # pragma: no cover 
+   client = boto3.client('config', region_name=region, **account.credentials)
+   response = client.describe_configuration_recorder_status()
+   response.pop('ResponseMetadata')
+   if response['ConfigurationRecordersStatus']:
+       state = dict(recording=True)
+   else:
+       state = dict(recording=False)
+   return dict(ConfigurationRecordersStatus=state)
+
+
 def set_account_alias(region, account, alias=None):
     client = boto3.client('iam', region_name=region, **account.credentials)
     if alias is None:
