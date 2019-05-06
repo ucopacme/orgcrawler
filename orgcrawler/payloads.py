@@ -63,9 +63,20 @@ def config_resource_counts(region, account):        # pragma: no cover
 
 
 def config_describe_rules(region, account):     # pragma: no cover
+    '''
+    usage example:
+
+      orgcrawler -r OrganizationAccountAccessRole orgcrawler.payloads.config_describe_rules
+
+      orgcrawler -r OrganizationAccountAccessRole --regions us-west-2 orgcrawler.payloads.config_describe_rules | jq -r '.[] | .Account, (.Regions[] | ."us-west-2".ConfigRules[].ConfigRuleName), ""' | tee config_rules_in_accounts.us-west-2
+    '''
     client = boto3.client('config', region_name=region, **account.credentials)
     response = client.describe_config_rules()
-    return dict(ConfigRules=response['ConfigRules'])
+    rules = response['ConfigRules']
+    while 'NextToken' in response:
+        response = client.describe_config_rules(NextToken=response['NextToken'])
+        rules += response['ConfigRules']
+    return dict(ConfigRules=rules)
 
 
 def config_describe_recorder_status(region, account):
