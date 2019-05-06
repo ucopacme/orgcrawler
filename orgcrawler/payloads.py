@@ -2,7 +2,7 @@ import boto3
 import re
 
 
-def status_config_svcs(region, account ):
+def status_config_svcs(region, account ):    # pragma: no cover 
    client = boto3.client('config', region_name=region, **account.credentials)
    response = client.describe_configuration_recorder_status()
    response.pop('ResponseMetadata')
