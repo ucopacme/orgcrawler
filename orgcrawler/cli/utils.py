@@ -47,7 +47,7 @@ def format_responses(execution):
         d = dict(
             Account=account_name,
             Regions=[
-                {r.region: r.payload_output} for r in responses if
+                {'Region': r.region, 'Output': r.payload_output} for r in responses if
                 r.account.name == account_name
             ]
         )
