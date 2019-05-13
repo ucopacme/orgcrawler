@@ -24,6 +24,9 @@ root:
     - account01
     - account02
     - account03
+    policies:
+    - policy01
+    - policy02
     child_ou:
       - name: ou01
         child_ou:
@@ -70,6 +73,16 @@ root:
             - account13
 """
 
+POLICY_DOC = dict(
+    Version='2012-10-17',
+    Statement=[dict(
+        Sid='MockPolicyStatement',
+        Effect='Allow',
+        Action='s3:*',
+        Resource='*',
+    )]
+)
+
 def mock_org_from_spec(client, root_id, parent_id, spec):
     for ou in spec:
         if ou['name'] == 'root':
@@ -89,6 +102,18 @@ def mock_org_from_spec(client, root_id, parent_id, spec):
                     AccountId=account_id,
                     SourceParentId=root_id,
                     DestinationParentId=ou_id,
+                )
+        if 'policies' in ou:
+            for name  in ou['policies']:
+                policy_id = client.create_policy(
+                    Name=name,
+                    Type='SERVICE_CONTROL_POLICY',
+                    Content=json.dumps(POLICY_DOC),
+                    Description='Mock service control policy',
+                )['Policy']['PolicySummary']['Id']
+                client.attach_policy(
+                    PolicyId=policy_id,
+                    TargetId=ou_id,
                 )
         if 'child_ou' in ou:
             mock_org_from_spec(client, root_id, ou_id, ou['child_ou'])
@@ -156,6 +181,18 @@ def test_org_objects():
     assert org_object.organization_id == org.id
     assert org_object.master_account_id == org.master_account_id
     assert org_object.name == 'generic'
+
+    policy = orgs.OrgPolicy(
+        org,
+        name='policy01',
+        id='p-fue927ci',
+    )
+    assert isinstance(policy, orgs.OrgPolicy)
+    assert policy.organization_id == org.id
+    assert policy.master_account_id == org.master_account_id
+    assert policy.name == 'policy01'
+    assert policy.id == 'p-fue927ci'
+    assert isinstance(policy.attachments, list)
 
     account = orgs.OrgAccount(
         org,
@@ -259,6 +296,7 @@ def test_load():
     assert org.root_id == root_id
     assert len(org.accounts) == 3
     assert len(org.org_units) == 6
+    assert len(org.policies) == 2
 
     org_from_cache = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org_from_cache.load()

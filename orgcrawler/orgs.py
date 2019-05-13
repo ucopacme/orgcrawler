@@ -60,6 +60,7 @@ class Org(object):
         self.root_id = None
         self.accounts = []
         self.org_units = []
+        self.policies = []
         self._client = None
         self._cache_file_max_age = cache_file_max_age
         self._cache_dir = os.path.expanduser(cache_dir)
@@ -82,6 +83,12 @@ class Org(object):
         """
         return [ou.dump() for ou in self.org_units]
 
+    def dump_policies(self):
+        """
+        Dump loaded OrgPolicy objects as list(dict)
+        """
+        return [policy.dump() for policy in self.policies]
+
     def dump(self):
         """
         Dump loaded Org object as dictionary
@@ -94,6 +101,7 @@ class Org(object):
         org_dump.pop('_cache_file_max_age')
         org_dump['accounts'] = self.dump_accounts()
         org_dump['org_units'] = self.dump_org_units()
+        org_dump['policies'] = self.dump_policies()
         return org_dump
 
     def dump_json(self):
@@ -117,6 +125,8 @@ class Org(object):
             self._load_accounts()
             self.org_units = []
             self._load_org_units()
+            self.policies = []
+            self._load_policies()
             self._save_cached_org_to_file()
 
     def _load_client(self):
@@ -158,6 +168,9 @@ class Org(object):
         self.org_units = [
             OrganizationalUnit(self, **org_unit) for org_unit in org_dump['org_units']
         ]
+        self.policies = [
+            OrgPolicy(self, **policy) for policy in org_dump['policies']
+        ]
 
     def _load_org(self):
         response = self._client.describe_organization()
@@ -188,7 +201,9 @@ class Org(object):
                     email=account['Email'],
                     parent_id=parent_id,
                 )
+                org_account.load_attached_policies(org._client)
                 org.accounts.append(org_account)
+
             except Exception:   # pragma: no cover
                 org._exc_info = sys.exc_info()
 
@@ -214,15 +229,50 @@ class Org(object):
             )
             org_units += response['OrganizationalUnits']
         for ou in org_units:
-            self.org_units.append(
-                OrganizationalUnit(
-                    self,
-                    name=ou['Name'],
-                    id=ou['Id'],
-                    parent_id=parent_id,
-                )
+            org_unit = OrganizationalUnit(
+                self,
+                name=ou['Name'],
+                id=ou['Id'],
+                parent_id=parent_id,
             )
+            org_unit.load_attached_policies(self._client)
+            self.org_units.append(org_unit)
             self._recurse_organization(ou['Id'])
+
+    def _load_policies(self):
+        response = self._client.list_policies(Filter='SERVICE_CONTROL_POLICY')
+        policies = response['Policies']
+        while 'NextToken' in response and response['NextToken']:    # pragma: no cover
+            try:
+                response = self._client.list_policies(
+                    Filter='SERVICE_CONTROL_POLICY',
+                    NextToken=response['NextToken'],
+                )
+                policies = response['Policies']
+            except ClientError as e:
+                if e.response['Error']['Code'] == 'TooManyRequestsException':
+                    continue
+
+        def make_org_policy_object(policy, org):
+            try:
+                org_policy = OrgPolicy(
+                    org,
+                    name=policy['Name'],
+                    id=policy['Id'],
+                )
+                org_policy.load_attachments(org._client)
+                org.policies.append(org_policy)
+            except Exception:   # pragma: no cover
+                org._exc_info = sys.exc_info()
+
+        utils.queue_threads(
+            policies,
+            make_org_policy_object,
+            func_args=(self,),
+            thread_count=len(policies)
+        )
+        if self._exc_info:   # pragma: no cover
+            raise self._exc_info[1].with_traceback(self._exc_info[2])
 
     def _save_cached_org_to_file(self):
         os.makedirs(self._cache_dir, 0o700, exist_ok=True)
@@ -381,6 +431,7 @@ class OrgObject(object):
         self.name = kwargs['name']
         self.id = kwargs.get('id')
         self.parent_id = kwargs.get('parent_id')
+        self.attached_policies = []
 
     def dump(self):
         """
@@ -389,6 +440,21 @@ class OrgObject(object):
         org_object_dump = dict()
         org_object_dump.update(vars(self).items())
         return org_object_dump
+
+    def load_attached_policies(self, client):
+        response = client.list_policies_for_target(
+            TargetId=self.id,
+            Filter='SERVICE_CONTROL_POLICY',
+        )
+        policies = response['Policies']
+        while 'NextToken' in response and response['NextToken']:  # pragma: no cover
+            client.list_policies_for_target(
+                TargetId=self.id,
+                Filter='SERVICE_CONTROL_POLICY',
+                NextToken=response['NextToken'],    
+            )
+            policies = response['Policies']
+        self.attached_policies = policies
 
 
 class OrganizationalUnit(OrgObject):
@@ -404,6 +470,7 @@ class OrgAccount(OrgObject):
         self.email = kwargs['email']
         self.aliases = kwargs.get('aliases', [])
         self.credentials = {}
+        self.attached_policies = []
 
     def load_credentials(self, access_role):
         self.credentials = utils.assume_role_in_account(self.id, access_role)
@@ -412,3 +479,21 @@ class OrgAccount(OrgObject):
         account_dump = super(OrgAccount, self).dump()
         account_dump.update(dict(credentials={}))
         return account_dump
+
+
+class OrgPolicy(OrgObject):
+
+    def __init__(self, *args, **kwargs):
+        super(OrgPolicy, self).__init__(*args, **kwargs)
+        self.attachments = kwargs.get('attachments', [])
+
+    def load_attachments(self, client):
+        response = client.list_targets_for_policy(PolicyId=self.id)
+        targets = response['Targets']
+        while 'NextToken' in response and response['NextToken']:  # pragma: no cover
+            client.list_targets_for_policy(
+                PolicyId=self.id,
+                NextToken=response['NextToken'],    
+            )
+            targets = response['Targets']
+        self.attachments = targets
