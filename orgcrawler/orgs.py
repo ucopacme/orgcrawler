@@ -451,7 +451,7 @@ class OrgObject(object):
             client.list_policies_for_target(
                 TargetId=self.id,
                 Filter='SERVICE_CONTROL_POLICY',
-                NextToken=response['NextToken'],    
+                NextToken=response['NextToken'],
             )
             policies = response['Policies']
         self.attached_policy_ids = [p['Id'] for p in policies]
@@ -492,7 +492,7 @@ class OrgPolicy(OrgObject):
         while 'NextToken' in response and response['NextToken']:  # pragma: no cover
             client.list_targets_for_policy(
                 PolicyId=self.id,
-                NextToken=response['NextToken'],    
+                NextToken=response['NextToken'],
             )
             targets = response['Targets']
         self.targets = targets
