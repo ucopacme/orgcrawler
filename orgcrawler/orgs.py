@@ -201,7 +201,7 @@ class Org(object):
                     email=account['Email'],
                     parent_id=parent_id,
                 )
-                org_account.load_attached_policies(org._client)
+                org_account.load_attached_policy_ids(org._client)
                 org.accounts.append(org_account)
 
             except Exception:   # pragma: no cover
@@ -235,7 +235,7 @@ class Org(object):
                 id=ou['Id'],
                 parent_id=parent_id,
             )
-            org_unit.load_attached_policies(self._client)
+            org_unit.load_attached_policy_ids(self._client)
             self.org_units.append(org_unit)
             self._recurse_organization(ou['Id'])
 
@@ -260,7 +260,7 @@ class Org(object):
                     name=policy['Name'],
                     id=policy['Id'],
                 )
-                org_policy.load_attachments(org._client)
+                org_policy.load_targets(org._client)
                 org.policies.append(org_policy)
             except Exception:   # pragma: no cover
                 org._exc_info = sys.exc_info()
@@ -431,7 +431,7 @@ class OrgObject(object):
         self.name = kwargs['name']
         self.id = kwargs.get('id')
         self.parent_id = kwargs.get('parent_id')
-        self.attached_policies = []
+        self.attached_policy_ids = kwargs.get('attached_policy_ids')
 
     def dump(self):
         """
@@ -441,7 +441,7 @@ class OrgObject(object):
         org_object_dump.update(vars(self).items())
         return org_object_dump
 
-    def load_attached_policies(self, client):
+    def load_attached_policy_ids(self, client):
         response = client.list_policies_for_target(
             TargetId=self.id,
             Filter='SERVICE_CONTROL_POLICY',
@@ -454,7 +454,7 @@ class OrgObject(object):
                 NextToken=response['NextToken'],    
             )
             policies = response['Policies']
-        self.attached_policies = policies
+        self.attached_policy_ids = [p['Id'] for p in policies]
 
 
 class OrganizationalUnit(OrgObject):
@@ -470,7 +470,6 @@ class OrgAccount(OrgObject):
         self.email = kwargs['email']
         self.aliases = kwargs.get('aliases', [])
         self.credentials = {}
-        self.attached_policies = []
 
     def load_credentials(self, access_role):
         self.credentials = utils.assume_role_in_account(self.id, access_role)
@@ -485,9 +484,9 @@ class OrgPolicy(OrgObject):
 
     def __init__(self, *args, **kwargs):
         super(OrgPolicy, self).__init__(*args, **kwargs)
-        self.attachments = kwargs.get('attachments', [])
+        self.targets = kwargs.get('targets', [])
 
-    def load_attachments(self, client):
+    def load_targets(self, client):
         response = client.list_targets_for_policy(PolicyId=self.id)
         targets = response['Targets']
         while 'NextToken' in response and response['NextToken']:  # pragma: no cover
@@ -496,4 +495,4 @@ class OrgPolicy(OrgObject):
                 NextToken=response['NextToken'],    
             )
             targets = response['Targets']
-        self.attachments = targets
+        self.targets = targets

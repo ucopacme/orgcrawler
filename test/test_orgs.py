@@ -20,15 +20,17 @@ MASTER_ACCOUNT_ID='123456789012'
 SIMPLE_ORG_SPEC="""
 root:
   - name: root
-    accounts:
-    - account01
-    - account02
-    - account03
     policies:
     - policy01
-    - policy02
+    accounts:
+    - name: account01
+      policies:
+      - policy02
+    - name: account02
     child_ou:
       - name: ou01
+        policies:
+        - policy03
         child_ou:
           - name: ou01-sub0
       - name: ou02
@@ -43,34 +45,37 @@ COMPLEX_ORG_SPEC="""
 root:
   - name: root
     accounts:
-    - account01
-    - account02
-    - account03
+    - name: account01
+    - name: account02
+    - name: account03
+    policies:
+    - policy01
+    - policy02
     child_ou:
       - name: ou01
         accounts:
-        - account04
-        - account05
+        - name: account04
+        - name: account05
         child_ou:
           - name: ou01-1
             accounts:
-            - account08
+            - name: account08
           - name: ou01-2
             accounts:
-            - account09
-            - account10
+            - name: account09
+            - name: account10
       - name: ou02
         accounts:
-        - account06
-        - account07
+        - name: account06
+        - name: account07
         child_ou:
           - name: ou02-1
             accounts:
-            - account11
+            - name: account11
           - name: ou02-2
             accounts:
-            - account12
-            - account13
+            - name: account12
+            - name: account13
 """
 
 POLICY_DOC = dict(
@@ -93,18 +98,30 @@ def mock_org_from_spec(client, root_id, parent_id, spec):
                 Name=ou['name'],
             )['OrganizationalUnit']['Id']
         if 'accounts' in ou:
-            for name in ou['accounts']:
+            for account in ou['accounts']:
                 account_id = client.create_account(
-                    AccountName=name,
-                    Email=name + '@example.com',
+                    AccountName=account['name'],
+                    Email=account['name'] + '@example.com',
                 )['CreateAccountStatus']['AccountId']
                 client.move_account(
                     AccountId=account_id,
                     SourceParentId=root_id,
                     DestinationParentId=ou_id,
                 )
+                if 'policies' in account:
+                    for policy_name in account['policies']:
+                        policy_id = client.create_policy(
+                            Name=policy_name,
+                            Type='SERVICE_CONTROL_POLICY',
+                            Content=json.dumps(POLICY_DOC),
+                            Description='Mock service control policy',
+                        )['Policy']['PolicySummary']['Id']
+                        client.attach_policy(
+                            PolicyId=policy_id,
+                            TargetId=account_id,
+                        )
         if 'policies' in ou:
-            for name  in ou['policies']:
+            for name in ou['policies']:
                 policy_id = client.create_policy(
                     Name=name,
                     Type='SERVICE_CONTROL_POLICY',
@@ -192,7 +209,7 @@ def test_org_objects():
     assert policy.master_account_id == org.master_account_id
     assert policy.name == 'policy01'
     assert policy.id == 'p-fue927ci'
-    assert isinstance(policy.attachments, list)
+    assert isinstance(policy.targets, list)
 
     account = orgs.OrgAccount(
         org,
@@ -222,6 +239,7 @@ def test_org_objects():
     assert ou.id == 'o-jfk0'
     assert ou.parent_id == org.root_id
 
+
 @mock_sts
 @mock_organizations
 def test_load_accounts():
@@ -230,7 +248,7 @@ def test_load_accounts():
     org._load_client()
     org._load_org()
     org._load_accounts()
-    assert len(org.accounts) == 3
+    assert len(org.accounts) == 2
     assert isinstance(org.accounts[0], orgs.OrgAccount)
     assert org.accounts[0].parent_id == org.root_id
 
@@ -246,6 +264,20 @@ def test_load_org_units():
     assert len(org.org_units) == 6
     for ou in org.org_units:
         assert isinstance(ou, orgs.OrganizationalUnit)
+
+ 
+@mock_sts
+@mock_organizations
+def test_load_policies():
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
+    org._load_client()
+    org._load_org()
+    org._load_policies()
+    assert len(org.policies) == 3
+    for policy in org.policies:
+        assert isinstance(policy, orgs.OrgPolicy)
+
 
 @mock_sts
 @mock_organizations
@@ -280,6 +312,7 @@ def test_org_cache():
     org_from_cache = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org_from_cache._load_org_dump(loaded_dump)
     assert org.dump() == org_from_cache.dump()
+    clean_up()
 
 @mock_sts
 @mock_organizations
@@ -290,20 +323,35 @@ def test_load():
     assert not os.path.exists(org._cache_dir)
     assert not os.path.exists(org._cache_file)
     org.load()
-    print(org._cache_file)
     assert os.path.exists(org._cache_file)
     assert org.id == org_id
     assert org.root_id == root_id
-    assert len(org.accounts) == 3
+    assert len(org.accounts) == 2
     assert len(org.org_units) == 6
-    assert len(org.policies) == 2
+    assert len(org.policies) == 3
+
+    for ou in org.org_units:
+        for policy_id in ou.attached_policy_ids:
+            assert policy_id in [p.id for p in org.policies]
+    for account in org.accounts:
+        for policy_id in account.attached_policy_ids:
+            assert policy_id in [p.id for p in org.policies]
+
+    for policy in org.policies:
+        for target in policy.targets:
+            if target['Type'] == 'ROOT':
+                assert target['TargetId'] == root_id
+            elif target['Type'] == 'ORGANIZATIONAL_UNIT':
+                assert target['TargetId'] in [ou.id for ou in org.org_units]
+            elif target['Type'] == 'ACCOUNT':
+                assert target['TargetId'] in [a.id for a in org.accounts]
 
     org_from_cache = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org_from_cache.load()
     assert org.dump() == org_from_cache.dump()
     clean_up()
 
- 
+
 @mock_sts
 @mock_organizations
 def test_dump_accounts():
@@ -312,12 +360,12 @@ def test_dump_accounts():
     org.load()
     response = org.dump_accounts()
     assert isinstance(response, list)
-    assert len(response) == 3
-    mock_account_names = yaml.load(SIMPLE_ORG_SPEC)['root'][0]['accounts']
+    assert len(response) == 2
+    mock_accounts = yaml.load(SIMPLE_ORG_SPEC)['root'][0]['accounts']
     for account in response:
         assert account['master_account_id'] == MASTER_ACCOUNT_ID
         assert account['organization_id'] == org_id
-        assert account['name'] in mock_account_names
+        assert account['name'] in [a['name'] for a in mock_accounts]
         assert re.compile(r'[0-9]{12}').match(account['id'])
         assert account['parent_id'] == root_id
         assert account['email'] == account['name'] + '@example.com'
@@ -332,14 +380,14 @@ def test_list_accounts_by_name_or_id():
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org.load()
-    mock_account_names = yaml.load(SIMPLE_ORG_SPEC)['root'][0]['accounts']
+    mock_accounts = yaml.load(SIMPLE_ORG_SPEC)['root'][0]['accounts']
     response = org.list_accounts_by_name()
     assert isinstance(response, list)
-    assert len(response) == 3
-    assert sorted(response) == mock_account_names
+    assert len(response) == 2
+    assert sorted(response) == [a['name'] for a in mock_accounts]
     response = org.list_accounts_by_id()
     assert isinstance(response, list)
-    assert len(response) == 3
+    assert len(response) == 2
     for account_id in response:
         assert re.compile(r'[0-9]{12}').match(account_id)
     clean_up()
