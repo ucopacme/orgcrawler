@@ -27,6 +27,7 @@ root:
       policies:
       - policy02
     - name: account02
+    - name: account03
     child_ou:
       - name: ou01
         policies:
@@ -248,7 +249,7 @@ def test_load_accounts():
     org._load_client()
     org._load_org()
     org._load_accounts()
-    assert len(org.accounts) == 2
+    assert len(org.accounts) == 3
     assert isinstance(org.accounts[0], orgs.OrgAccount)
     assert org.accounts[0].parent_id == org.root_id
 
@@ -326,7 +327,7 @@ def test_load():
     assert os.path.exists(org._cache_file)
     assert org.id == org_id
     assert org.root_id == root_id
-    assert len(org.accounts) == 2
+    assert len(org.accounts) == 3
     assert len(org.org_units) == 6
     assert len(org.policies) == 3
 
@@ -360,7 +361,7 @@ def test_dump_accounts():
     org.load()
     response = org.dump_accounts()
     assert isinstance(response, list)
-    assert len(response) == 2
+    assert len(response) == 3
     mock_accounts = yaml.load(SIMPLE_ORG_SPEC)['root'][0]['accounts']
     for account in response:
         assert account['master_account_id'] == MASTER_ACCOUNT_ID
@@ -383,11 +384,11 @@ def test_list_accounts_by_name_or_id():
     mock_accounts = yaml.load(SIMPLE_ORG_SPEC)['root'][0]['accounts']
     response = org.list_accounts_by_name()
     assert isinstance(response, list)
-    assert len(response) == 2
+    assert len(response) == 3
     assert sorted(response) == [a['name'] for a in mock_accounts]
     response = org.list_accounts_by_id()
     assert isinstance(response, list)
-    assert len(response) == 2
+    assert len(response) == 3
     for account_id in response:
         assert re.compile(r'[0-9]{12}').match(account_id)
     clean_up()
