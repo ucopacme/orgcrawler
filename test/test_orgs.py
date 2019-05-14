@@ -56,6 +56,10 @@ root:
       - name: ou01
         accounts:
         - name: account04
+          policies:
+          - policy01
+          - policy03
+          - policy04
         - name: account05
         child_ou:
           - name: ou01-1
@@ -65,10 +69,18 @@ root:
             accounts:
             - name: account09
             - name: account10
+            policies:
+            - policy01
+            - policy05
+            - policy06
       - name: ou02
         accounts:
         - name: account06
         - name: account07
+          policies:
+          - policy01
+          - policy05
+          - policy06
         child_ou:
           - name: ou02-1
             accounts:
@@ -77,6 +89,9 @@ root:
             accounts:
             - name: account12
             - name: account13
+              policies:
+              - policy03
+              - policy04
 """
 
 POLICY_DOC = dict(
@@ -89,7 +104,7 @@ POLICY_DOC = dict(
     )]
 )
 
-def mock_org_from_spec(client, root_id, parent_id, spec):
+def mock_org_from_spec(client, root_id, parent_id, spec, policy_list):
     for ou in spec:
         if ou['name'] == 'root':
             ou_id = root_id
@@ -111,30 +126,40 @@ def mock_org_from_spec(client, root_id, parent_id, spec):
                 )
                 if 'policies' in account:
                     for policy_name in account['policies']:
-                        policy_id = client.create_policy(
-                            Name=policy_name,
-                            Type='SERVICE_CONTROL_POLICY',
-                            Content=json.dumps(POLICY_DOC),
-                            Description='Mock service control policy',
-                        )['Policy']['PolicySummary']['Id']
+                        policy = next((
+                            p for p in policy_list if p['Name'] == policy_name
+                        ), None)
+                        if policy is None:
+                            policy = client.create_policy(
+                                Name=policy_name,
+                                Type='SERVICE_CONTROL_POLICY',
+                                Content=json.dumps(POLICY_DOC),
+                                Description='Mock service control policy',
+                            )['Policy']['PolicySummary']
+                            policy_list.append(policy)
                         client.attach_policy(
-                            PolicyId=policy_id,
+                            PolicyId=policy['Id'],
                             TargetId=account_id,
                         )
         if 'policies' in ou:
-            for name in ou['policies']:
-                policy_id = client.create_policy(
-                    Name=name,
-                    Type='SERVICE_CONTROL_POLICY',
-                    Content=json.dumps(POLICY_DOC),
-                    Description='Mock service control policy',
-                )['Policy']['PolicySummary']['Id']
+            for policy_name in ou['policies']:
+                policy = next((
+                    p for p in policy_list if p['Name'] == policy_name
+                ), None)
+                if policy is None:
+                    policy = client.create_policy(
+                        Name=policy_name,
+                        Type='SERVICE_CONTROL_POLICY',
+                        Content=json.dumps(POLICY_DOC),
+                        Description='Mock service control policy',
+                    )['Policy']['PolicySummary']
+                    policy_list.append(policy)
                 client.attach_policy(
-                    PolicyId=policy_id,
+                    PolicyId=policy['Id'],
                     TargetId=ou_id,
                 )
         if 'child_ou' in ou:
-            mock_org_from_spec(client, root_id, ou_id, ou['child_ou'])
+            mock_org_from_spec(client, root_id, ou_id, ou['child_ou'], policy_list)
 
 
 def build_mock_org(spec):
@@ -143,7 +168,7 @@ def build_mock_org(spec):
     client.create_organization(FeatureSet='ALL')
     org_id = client.describe_organization()['Organization']['Id']
     root_id = client.list_roots()['Roots'][0]['Id']
-    mock_org_from_spec(client, root_id, root_id, yaml.load(spec)['root'])
+    mock_org_from_spec(client, root_id, root_id, yaml.load(spec)['root'], list())
     return (org_id, root_id)
 
 def clean_up(org=None):
@@ -152,6 +177,7 @@ def clean_up(org=None):
     if os.path.isdir(org._cache_dir):
         shutil.rmtree(org._cache_dir)
 
+'''
 @mock_organizations
 def test_org():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
@@ -599,4 +625,95 @@ def test_list_accounts_in_ou_recursive():
     assert len(response) == 5
     response = org.list_accounts_in_ou_recursive('ou02-1')
     assert len(response) == 1
+    clean_up()
+'''
+
+@mock_sts
+@mock_organizations
+def test_list_policies_by_name():
+    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org.load()
+    response = org.list_policies_by_name()
+    print(response)
+    assert len(response) == 6
+    for name in response:
+        assert name.startswith('policy')
+
+
+@mock_sts
+@mock_organizations
+def test_list_policies_by_id():
+    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org.load()
+    response = org.list_policies_by_id()
+    print(response)
+    assert len(response) == 6
+    for policy_id in response:
+        assert re.compile(r'p-[a-z0-9]{8}').match(policy_id)
+
+
+@mock_sts
+@mock_organizations
+def test_get_policy():
+    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org.load()
+    policy = org.get_policy('policy01')
+    assert isinstance(policy, orgs.OrgPolicy)
+    assert policy.name == 'policy01'
+    assert org.get_policy(policy) == policy
+    policy_id = next((p.id for p in org.policies))
+    policy = org.get_policy(policy_id)
+    assert isinstance(policy, orgs.OrgPolicy)
+    assert policy.id == policy_id
+    assert org.get_policy('BLEE') is None
+    assert org.get_policy(org) is None
+    clean_up()
+
+
+@mock_sts
+@mock_organizations
+def test_get_policy_id_by_name():
+    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org.load()
+    policy_id = org.get_policy_id_by_name('policy01')
+    assert isinstance(policy_id, str)
+    #assert response == next((p.id for p in org.policies if p.name == 'policy01'))
+    assert policy_id == org.get_policy('policy01').id
+    assert org.get_policy_id_by_name('BLEE') is None
+
+
+@mock_sts
+@mock_organizations
+def test_get_policy_name_by_id():
+    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org.load()
+    #policy_id = next((p.id for p in org.policies if p.name == 'policy01'))
+    policy_id = org.get_policy_id_by_name('policy01')
+    response = org.get_policy_name_by_id(policy_id)
+    assert isinstance(response, str)
+    assert response == 'policy01'
+    assert org.get_policy_name_by_id('BLEE') is None
+
+
+@mock_sts
+@mock_organizations
+def test_get_policy_id():
+    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org.load()
+    policy = org.get_policy('policy01')
+    assert isinstance(policy, orgs.OrgPolicy)
+    assert policy.name == 'policy01'
+    assert org.get_policy(policy) == policy
+    policy_id = next((p.id for p in org.policies))
+    policy = org.get_policy(policy_id)
+    assert isinstance(policy, orgs.OrgPolicy)
+    assert policy.id == policy_id
+    assert org.get_policy('BLEE') is None
+    assert org.get_policy(org) is None
     clean_up()

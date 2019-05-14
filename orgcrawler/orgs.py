@@ -452,24 +452,6 @@ class Org(object):
             policy_list = self.policies
         return [p.id for p in policy_list]
 
-    def get_policy_id_by_name(self, name):
-        """
-        Args:
-            name (str): policy name
-        Returns:
-            str: policy Id matching ``name``
-        """
-        return next((p.id for p in self.policies if p.name == name), None)
-
-    def get_policy_name_by_id(self, policy_id):
-        """
-        Args:
-            id (str): policy Id
-        Returns:
-            str: policy name matching ``id``
-        """
-        return next((p.name for p in self.policies if p.id == policy_id), None)
-
     def get_policy(self, identifier):
         """
         Args:
@@ -496,6 +478,24 @@ class Org(object):
             return policy.id
         return None
 
+    def get_policy_id_by_name(self, name):
+        """
+        Args:
+            name (str): policy name
+        Returns:
+            str: policy Id matching ``name``
+        """
+        return next((p.id for p in self.policies if p.name == name), None)
+
+    def get_policy_name_by_id(self, policy_id):
+        """
+        Args:
+            id (str): policy Id
+        Returns:
+            str: policy name matching ``id``
+        """
+        return next((p.name for p in self.policies if p.id == policy_id), None)
+
     def get_policy_document(self, identifier):
         """
         Args:
@@ -504,13 +504,13 @@ class Org(object):
             str: the policy statement (json) for this policy
         """
         policy = self.get_policy(identifier)
-        if policy is not None
+        if policy is not None:
             return self._client.describe_policy['Policy']['Content']
         return None
 
     def get_targets_for_policy(self, identifier):
         policy = self.get_policy(identifier)
-        if policy is not None
+        if policy is not None:
             return self.get_policy(identifier).targets
         return None
 
@@ -524,12 +524,22 @@ class Org(object):
         return None
 
     def get_accounts_for_policy_recursive(self, identifier):
-        pass
+        affected_accounts = []
         # get targets
-        # if target is account, append to list
-        # if target is org_unit
-            # get accounts for ou recursive and append to list
+        policy = self.get_policy(identifier)
+        if policy is None:
+            return None
+        for target in policy.targets:
+            # if target is account, append to list
+            if target.type == 'ACCOUNT':
+                affected_accounts.append(self.get_account(target.id))
+            # if target is org_unit
+            elif target.type in ['ROOT', 'ORGANIZATIONAL_UNIT']:
+                # get accounts for ou recursive and append to list
+                affected_accounts += self.list_accounts_in_ou_recursive(target.id)
+
         # return list of unique accounts
+        return list(set(affected_accounts))
 
 
 class OrgObject(object):
