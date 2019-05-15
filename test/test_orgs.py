@@ -177,7 +177,7 @@ def clean_up(org=None):
     if os.path.isdir(org._cache_dir):
         shutil.rmtree(org._cache_dir)
 
-'''
+
 @mock_organizations
 def test_org():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
@@ -536,6 +536,7 @@ def test_get_org_unit_id():
     assert ou.id == org.get_org_unit_id(ou)
     assert ou.id == org.get_org_unit_id(ou.id)
     assert ou.id == org.get_org_unit_id(ou.name)
+    assert org.get_org_unit_id('Blee') is None
     clean_up()
 
  
@@ -626,7 +627,7 @@ def test_list_accounts_in_ou_recursive():
     response = org.list_accounts_in_ou_recursive('ou02-1')
     assert len(response) == 1
     clean_up()
-'''
+
 
 @mock_sts
 @mock_organizations
@@ -639,6 +640,7 @@ def test_list_policies_by_name():
     assert len(response) == 6
     for name in response:
         assert name.startswith('policy')
+    clean_up()
 
 
 @mock_sts
@@ -652,6 +654,7 @@ def test_list_policies_by_id():
     assert len(response) == 6
     for policy_id in response:
         assert re.compile(r'p-[a-z0-9]{8}').match(policy_id)
+    clean_up()
 
 
 @mock_sts
@@ -681,9 +684,9 @@ def test_get_policy_id_by_name():
     org.load()
     policy_id = org.get_policy_id_by_name('policy01')
     assert isinstance(policy_id, str)
-    #assert response == next((p.id for p in org.policies if p.name == 'policy01'))
     assert policy_id == org.get_policy('policy01').id
     assert org.get_policy_id_by_name('BLEE') is None
+    clean_up()
 
 
 @mock_sts
@@ -698,6 +701,7 @@ def test_get_policy_name_by_id():
     assert isinstance(response, str)
     assert response == 'policy01'
     assert org.get_policy_name_by_id('BLEE') is None
+    clean_up()
 
 
 @mock_sts
@@ -706,14 +710,105 @@ def test_get_policy_id():
     org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org.load()
+    policy_id = org.get_policy_id('policy01')
+    assert isinstance(policy_id, str)
+    assert re.compile(r'p-[a-z0-9]{8}').match(policy_id)
+    assert policy_id == org.get_policy_id(policy_id)
+    assert policy_id == org.get_policy('policy01').id
+    assert policy_id == org.get_policy_id_by_name('policy01')
     policy = org.get_policy('policy01')
-    assert isinstance(policy, orgs.OrgPolicy)
-    assert policy.name == 'policy01'
-    assert org.get_policy(policy) == policy
-    policy_id = next((p.id for p in org.policies))
-    policy = org.get_policy(policy_id)
-    assert isinstance(policy, orgs.OrgPolicy)
-    assert policy.id == policy_id
-    assert org.get_policy('BLEE') is None
-    assert org.get_policy(org) is None
+    assert policy_id == org.get_policy_id(policy)
+    assert org.get_policy_id('Blee') is None
+    clean_up()
+
+'''
+@mock_sts
+@mock_organizations
+def test_get_policy_document():
+    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org.load()
+    policy_id = org.get_policy_id('policy01')
+    print(policy_id)
+    response = org._client.describe_policy(PolicyId=policy_id)
+    print(response)
+    #policy_doc = org.get_policy_document('policy01')
+    #print(policy_doc)
+    assert False
+    assert isinstance(policy_doc, str)
+    assert policy_doc == org.get_policy_document(org.get_policy('policy01'))
+    assert policy_doc == org.get_policy_document(org.get_policy_id('policy01'))
+    assert policy_doc == json.loads(POLICY_DOC)
+    clean_up()
+'''
+
+@mock_sts
+@mock_organizations
+def test_get_targets_for_policy():
+    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org.load()
+    targets = org.get_targets_for_policy('policy01')
+    assert len(targets) == 4
+    for target in targets:
+        assert sorted(target.keys()) == [
+            'Arn',
+            'Name',
+            'TargetId',
+            'Type',
+        ]
+    assert sorted([t['Name'] for t in targets]) == [
+        'Root',
+        'account04',
+        'account07',
+        'ou01-2',
+    ]
+    assert org.get_targets_for_policy('Blee') is None
+    clean_up()
+
+
+@mock_sts
+@mock_organizations
+def test_get_policies_for_target():
+    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org.load()
+    #policies = org.get_policies_for_target('Root')
+    policies = org.get_policies_for_target('account04')
+    assert len(policies) == 3
+    for policy in policies:
+        assert isinstance(policy, orgs.OrgPolicy)
+    policies = org.get_policies_for_target('ou01-2')
+    assert len(policies) == 3
+    for policy in policies:
+        assert isinstance(policy, orgs.OrgPolicy)
+    policies = org.get_policies_for_target('ou01')
+    assert policies is None
+    clean_up()
+
+
+@mock_sts
+@mock_organizations
+def test_get_accounts_for_policy_recursive():
+    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org.load()
+    accounts_for_policy = org.get_accounts_for_policy_recursive('policy01')
+    assert len(accounts_for_policy) == 13
+    assert sorted([a.name for a in accounts_for_policy]) == sorted([a.name for a in org.accounts])
+    accounts_for_policy = org.get_accounts_for_policy_recursive('policy02')
+    assert len(accounts_for_policy) == 13
+    accounts_for_policy = org.get_accounts_for_policy_recursive('policy03')
+    assert len(accounts_for_policy) == 2 
+    assert sorted([a.name for a in accounts_for_policy]) == ['account04', 'account13']
+    accounts_for_policy = org.get_accounts_for_policy_recursive('policy04')
+    assert len(accounts_for_policy) == 2 
+    assert sorted([a.name for a in accounts_for_policy]) == ['account04', 'account13']
+    accounts_for_policy = org.get_accounts_for_policy_recursive('policy05')
+    assert len(accounts_for_policy) == 3 
+    assert sorted([a.name for a in accounts_for_policy]) == ['account07', 'account09', 'account10']
+    accounts_for_policy = org.get_accounts_for_policy_recursive('policy06')
+    assert len(accounts_for_policy) == 3 
+    assert sorted([a.name for a in accounts_for_policy]) == ['account07', 'account09', 'account10']
+    assert org.get_accounts_for_policy_recursive('Blee') is None
     clean_up()
