@@ -16,12 +16,11 @@ from botocore.exceptions import ClientError
 from orgcrawler.logger import Logger
 
 
-#DEFAULT_LOGLEVEL = 'info'
-DEFAULT_LOGLEVEL = 'warning'
+DEFAULT_LOGLEVEL = 'error'
 
 
 def get_logger(log_level=DEFAULT_LOGLEVEL):
-    my_logger = Logger(log_level)
+    my_logger = Logger(loglevel=log_level)
     message = {
         'FILE': __file__.split('/')[-1],
         'METHOD': inspect.stack()[0][3],

@@ -3,8 +3,10 @@
 Script for querying AWS Organization resources
 """
 
+import os
+import inspect
 import click
-from orgcrawler import orgs, utils
+from orgcrawler import logger, orgs, utils
 from orgcrawler.cli.orgcrawler import print_version
 
 
@@ -63,6 +65,9 @@ def validate_command_argument(ctx, param, value):
 @click.option('--role', '-r',
     required=True,
     help='IAM role to assume for accessing AWS Organization Master account.')
+@click.option('-d', '--debug', count=True,
+    required=False,
+    help='Enable debugging. Repeating the option (-dd) includes AWS API debugging output.')
 @click.option('--format', '-f',
     default='json',
     type=click.Choice(['json', 'yaml']),
@@ -73,7 +78,7 @@ def validate_command_argument(ctx, param, value):
     expose_value=False,
     is_eager=True,
     help='Display version info and exit.')
-def main(command, argument, role, format):
+def main(command, argument, role, debug, format):
     """
 Arguments:
 
@@ -121,8 +126,15 @@ Examples:
     elif format == 'yaml':
         formatter = utils.yamlfmt
 
+    if debug == 0:
+        log_level = 'error'
+    elif debug == 1:
+        log_level = 'info'
+    elif debug >= 2:
+        log_level = 'debug'
+
     master_account_id = utils.get_master_account_id(role)
-    org = orgs.Org(master_account_id, role, 'info')
+    org = orgs.Org(master_account_id, role, log_level)
     org.load()
     cmd = eval('org.' + command)
     if argument:

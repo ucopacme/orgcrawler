@@ -30,7 +30,7 @@ class Org(object):
         master_account_id (str): Account Id of the Organization master account.
         access_role (str): The IAM role to assume when loading Organization
             resource data.
-        logger (object): the logging.Logger object
+        log_level (str): Sets the logging level [Default: 'error'].
         cache_file_max_age (int): Cache file time out in minutes [Default: 60].
         cache_dir (str): Directory where to save cache files
             [Default: ``~/.aws/orgcrawler-cache``].
@@ -60,7 +60,7 @@ class Org(object):
             cache_file=None):
         self.master_account_id = master_account_id
         self.access_role = org_access_role
-        self.logger = Logger(log_level)
+        self.logger = Logger(loglevel=log_level)
         self.id = None
         self.root_id = None
         self.accounts = []
@@ -73,7 +73,6 @@ class Org(object):
             cache_file = '-'.join(['cache_file', master_account_id])
         self._cache_file = os.path.join(self._cache_dir, cache_file)
         self._exc_info = None
-        print(self.logger)
 
     def dump_accounts(self, account_list=None):
         """
@@ -315,7 +314,7 @@ class Org(object):
                 Filter='SERVICE_CONTROL_POLICY',
                 NextToken=response['NextToken'],
             )
-            policies = response['Policies']
+            policies += response['Policies']
             #try:
             #    response = self._client.list_policies(
             #        Filter='SERVICE_CONTROL_POLICY',
@@ -350,6 +349,7 @@ class Org(object):
             make_org_policy_object,
             func_args=(self,),
             thread_count=len(policies)
+            logger=self.logger,
         )
         if self._exc_info:   # pragma: no cover
             raise self._exc_info[1].with_traceback(self._exc_info[2])
@@ -591,7 +591,6 @@ class Org(object):
             str: the policy statement (json) for this policy
         """
         policy_id = self.get_policy_id(identifier)
-        print(policy_id)
         #if policy_id is not None:
         #    #return self._client.describe_policy(PolicyId=policy_id)['Policy']['Content']
         #    return self._client.describe_policy(PolicyId=policy_id)
@@ -622,7 +621,6 @@ class Org(object):
         org_object = self.get_account(identifier)
         if org_object is None:
             org_object = self.get_org_unit(identifier)
-        print(type(org_object))
         if org_object is not None:
             policies = [
                 obj for obj in self.policies if obj.id in org_object.attached_policy_ids
@@ -640,12 +638,9 @@ class Org(object):
         """
         affected_accounts = []
         policy = self.get_policy(identifier)
-        print(policy.name)
         if policy is None:
             return None
         for target in policy.targets:
-            print(target)
-            print(affected_accounts)
             if target['Type'] == 'ACCOUNT':
                 affected_accounts.append(self.get_account(target['TargetId']))
             elif target['Type'] in ['ROOT', 'ORGANIZATIONAL_UNIT']:
@@ -694,7 +689,7 @@ class OrgObject(object):
                 Filter='SERVICE_CONTROL_POLICY',
                 NextToken=response['NextToken'],
             )
-            policies = response['Policies']
+            policies += response['Policies']
         self.attached_policy_ids = [p['Id'] for p in policies]
 
 
@@ -742,5 +737,5 @@ class OrgPolicy(OrgObject):
                 PolicyId=self.id,
                 NextToken=response['NextToken'],
             )
-            targets = response['Targets']
+            targets += response['Targets']
         self.targets = targets
