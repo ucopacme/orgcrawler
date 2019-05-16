@@ -122,7 +122,7 @@ Examples:
         formatter = utils.yamlfmt
 
     master_account_id = utils.get_master_account_id(role)
-    org = orgs.Org(master_account_id, role)
+    org = orgs.Org(master_account_id, role, 'info')
     org.load()
     cmd = eval('org.' + command)
     if argument:

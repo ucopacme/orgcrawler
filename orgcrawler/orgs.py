@@ -1,5 +1,6 @@
 import os
 import sys
+import inspect
 import pickle
 import json
 from datetime import datetime, timedelta
@@ -8,6 +9,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 from orgcrawler import utils
+from orgcrawler.logger import Logger
 
 
 class Org(object):
@@ -28,6 +30,7 @@ class Org(object):
         master_account_id (str): Account Id of the Organization master account.
         access_role (str): The IAM role to assume when loading Organization
             resource data.
+        logger (object): the logging.Logger object
         cache_file_max_age (int): Cache file time out in minutes [Default: 60].
         cache_dir (str): Directory where to save cache files
             [Default: ``~/.aws/orgcrawler-cache``].
@@ -51,11 +54,13 @@ class Org(object):
     def __init__(self,
             master_account_id,
             org_access_role,
+            log_level=utils.DEFAULT_LOGLEVEL,
             cache_file_max_age=60,
             cache_dir='~/.aws/orgcrawler-cache',
             cache_file=None):
         self.master_account_id = master_account_id
         self.access_role = org_access_role
+        self.logger = Logger(log_level)
         self.id = None
         self.root_id = None
         self.accounts = []
@@ -68,6 +73,7 @@ class Org(object):
             cache_file = '-'.join(['cache_file', master_account_id])
         self._cache_file = os.path.join(self._cache_dir, cache_file)
         self._exc_info = None
+        print(self.logger)
 
     def dump_accounts(self, account_list=None):
         """
@@ -95,6 +101,7 @@ class Org(object):
         """
         org_dump = dict()
         org_dump.update(vars(self).items())
+        org_dump.pop('logger')
         org_dump.pop('_client')
         org_dump.pop('_cache_dir')
         org_dump.pop('_cache_file')
@@ -115,6 +122,12 @@ class Org(object):
         Make boto3 client calls to populate the Org object's Account and
         OrganizationalUnit resource data
         """
+        message = {
+            'FILE': __file__.split('/')[-1],
+            'CLASS': self.__class__.__name__,
+            'METHOD': inspect.stack()[0][3],
+        }
+        self.logger.info(message)
         self._load_client()
         try:
             org_dump = self._get_cached_org_from_file()
@@ -130,10 +143,22 @@ class Org(object):
             self._save_cached_org_to_file()
 
     def _load_client(self):
+        message = {
+            'FILE': __file__.split('/')[-1],
+            'CLASS': self.__class__.__name__,
+            'METHOD': inspect.stack()[0][3],
+        }
+        self.logger.info(message)
         self._client = self._get_org_client()
 
     def _get_org_client(self):
         """ Returns a boto3 client for Organizations object """
+        message = {
+            'FILE': __file__.split('/')[-1],
+            'CLASS': self.__class__.__name__,
+            'METHOD': inspect.stack()[0][3],
+        }
+        self.logger.info(message)
         try:
             credentials = utils.assume_role_in_account(
                 self.master_account_id,
@@ -149,6 +174,12 @@ class Org(object):
         return boto3.client('organizations', **credentials)
 
     def _get_cached_org_from_file(self):
+        message = {
+            'FILE': __file__.split('/')[-1],
+            'CLASS': self.__class__.__name__,
+            'METHOD': inspect.stack()[0][3],
+        }
+        self.logger.info(message)
         if not os.path.isfile(self._cache_file):
             raise RuntimeError('Cache file not found')
         cache_file_mod_time = datetime.fromtimestamp(os.stat(self._cache_file).st_mtime)
@@ -160,6 +191,12 @@ class Org(object):
             return pickle.load(pf)
 
     def _load_org_dump(self, org_dump):
+        message = {
+            'FILE': __file__.split('/')[-1],
+            'CLASS': self.__class__.__name__,
+            'METHOD': inspect.stack()[0][3],
+        }
+        self.logger.info(message)
         self.id = org_dump['id']
         self.root_id = org_dump['root_id']
         self.accounts = [
@@ -173,11 +210,23 @@ class Org(object):
         ]
 
     def _load_org(self):
+        message = {
+            'FILE': __file__.split('/')[-1],
+            'CLASS': self.__class__.__name__,
+            'METHOD': inspect.stack()[0][3],
+        }
+        self.logger.info(message)
         response = self._client.describe_organization()
         self.id = response['Organization']['Id']
         self.root_id = self._client.list_roots()['Roots'][0]['Id']
 
     def _load_accounts(self):
+        message = {
+            'FILE': __file__.split('/')[-1],
+            'CLASS': self.__class__.__name__,
+            'METHOD': inspect.stack()[0][3],
+        }
+        self.logger.info(message)
         response = self._client.list_accounts()
         accounts = response['Accounts']
         while 'NextToken' in response and response['NextToken']:    # pragma: no cover
@@ -211,15 +260,28 @@ class Org(object):
             accounts,
             make_org_account_object,
             func_args=(self,),
-            thread_count=len(accounts)
+            thread_count=len(accounts),
+            logger=self.logger,
         )
         if self._exc_info:   # pragma: no cover
             raise self._exc_info[1].with_traceback(self._exc_info[2])
 
     def _load_org_units(self):
+        message = {
+            'FILE': __file__.split('/')[-1],
+            'CLASS': self.__class__.__name__,
+            'METHOD': inspect.stack()[0][3],
+        }
+        self.logger.info(message)
         self._recurse_organization(self.root_id)
 
     def _recurse_organization(self, parent_id):
+        message = {
+            'FILE': __file__.split('/')[-1],
+            'CLASS': self.__class__.__name__,
+            'METHOD': inspect.stack()[0][3],
+        }
+        self.logger.info(message)
         response = self._client.list_organizational_units_for_parent(ParentId=parent_id)
         org_units = response['OrganizationalUnits']
         while 'NextToken' in response and response['NextToken']:    # pragma: no cover
@@ -240,20 +302,38 @@ class Org(object):
             self._recurse_organization(ou['Id'])
 
     def _load_policies(self):
+        message = {
+            'FILE': __file__.split('/')[-1],
+            'CLASS': self.__class__.__name__,
+            'METHOD': inspect.stack()[0][3],
+        }
+        self.logger.info(message)
         response = self._client.list_policies(Filter='SERVICE_CONTROL_POLICY')
         policies = response['Policies']
         while 'NextToken' in response and response['NextToken']:    # pragma: no cover
-            try:
-                response = self._client.list_policies(
-                    Filter='SERVICE_CONTROL_POLICY',
-                    NextToken=response['NextToken'],
-                )
-                policies = response['Policies']
-            except ClientError as e:
-                if e.response['Error']['Code'] == 'TooManyRequestsException':
-                    continue
+            response = self._client.list_policies(
+                Filter='SERVICE_CONTROL_POLICY',
+                NextToken=response['NextToken'],
+            )
+            policies = response['Policies']
+            #try:
+            #    response = self._client.list_policies(
+            #        Filter='SERVICE_CONTROL_POLICY',
+            #        NextToken=response['NextToken'],
+            #    )
+            #    policies = response['Policies']
+            #except ClientError as e:
+            #    if e.response['Error']['Code'] == 'TooManyRequestsException':
+            #        continue
 
         def make_org_policy_object(policy, org):
+            message = {
+                'FILE': __file__.split('/')[-1],
+                'CLASS': self.__class__.__name__,
+                'METHOD': inspect.stack()[0][3],
+                'policy': policy,
+            }
+            self.logger.info(message)
             try:
                 org_policy = OrgPolicy(
                     org,
@@ -275,6 +355,12 @@ class Org(object):
             raise self._exc_info[1].with_traceback(self._exc_info[2])
 
     def _save_cached_org_to_file(self):
+        message = {
+            'FILE': __file__.split('/')[-1],
+            'CLASS': self.__class__.__name__,
+            'METHOD': inspect.stack()[0][3],
+        }
+        self.logger.info(message)
         os.makedirs(self._cache_dir, 0o700, exist_ok=True)
         with open(self._cache_file, 'wb') as pf:
             pickle.dump(self.dump(), pf)
@@ -554,9 +640,12 @@ class Org(object):
         """
         affected_accounts = []
         policy = self.get_policy(identifier)
+        print(policy.name)
         if policy is None:
             return None
         for target in policy.targets:
+            print(target)
+            print(affected_accounts)
             if target['Type'] == 'ACCOUNT':
                 affected_accounts.append(self.get_account(target['TargetId']))
             elif target['Type'] in ['ROOT', 'ORGANIZATIONAL_UNIT']:
@@ -572,6 +661,7 @@ class OrgObject(object):
     def __init__(self, organization, **kwargs):
         self.organization_id = organization.id
         self.master_account_id = organization.master_account_id
+        self.logger = organization.logger
         self.name = kwargs['name']
         self.id = kwargs.get('id')
         self.parent_id = kwargs.get('parent_id')
@@ -583,9 +673,16 @@ class OrgObject(object):
         """
         org_object_dump = dict()
         org_object_dump.update(vars(self).items())
+        org_object_dump.pop('logger')
         return org_object_dump
 
     def load_attached_policy_ids(self, client):
+        message = {
+            'FILE': __file__.split('/')[-1],
+            'CLASS': self.__class__.__name__,
+            'METHOD': inspect.stack()[0][3],
+        }
+        self.logger.info(message)
         response = client.list_policies_for_target(
             TargetId=self.id,
             Filter='SERVICE_CONTROL_POLICY',
@@ -631,6 +728,13 @@ class OrgPolicy(OrgObject):
         self.targets = kwargs.get('targets', [])
 
     def load_targets(self, client):
+        message = {
+            'FILE': __file__.split('/')[-1],
+            'CLASS': self.__class__.__name__,
+            'METHOD': inspect.stack()[0][3],
+            'policy': self.name,
+        }
+        self.logger.info(message)
         response = client.list_targets_for_policy(PolicyId=self.id)
         targets = response['Targets']
         while 'NextToken' in response and response['NextToken']:  # pragma: no cover

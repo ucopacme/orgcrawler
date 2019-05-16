@@ -6,12 +6,28 @@ except ImportError:     # pragma: no cover
     import Queue as queue
 import json
 import yaml
+import inspect
 from datetime import datetime
 from functools import singledispatch
 
 import boto3
 from botocore.exceptions import ClientError
 
+from orgcrawler.logger import Logger
+
+
+#DEFAULT_LOGLEVEL = 'info'
+DEFAULT_LOGLEVEL = 'warning'
+
+
+def get_logger(log_level=DEFAULT_LOGLEVEL):
+    my_logger = Logger(log_level)
+    message = {
+        'FILE': __file__.split('/')[-1],
+        'METHOD': inspect.stack()[0][3],
+    }
+    my_logger.info(message)
+    return my_logger
 
 @singledispatch
 def to_serializable(val):
@@ -88,8 +104,16 @@ def get_master_account_id(role_name=None):
         sys.exit(e)
 
 
-def queue_threads(sequence, func, func_args=(), thread_count=20):
+def queue_threads(sequence, func, func_args=(), thread_count=20, logger=get_logger()):
     """generalized abstraction for running queued tasks in a thread pool"""
+    message = {
+        'FILE': __file__.split('/')[-1],
+        'METHOD': inspect.stack()[0][3],
+        'func': func,
+        'func_args': func_args,
+    }
+    logger.info(message)
+
     def worker(*args):
         while not q.empty():
             item = q.get()
