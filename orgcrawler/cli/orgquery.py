@@ -16,6 +16,8 @@ _COMMANDS = [
     'list_accounts_by_id',
     'list_org_units_by_name',
     'list_org_units_by_id',
+    'list_policies_by_name',
+    'list_policies_by_id',
 ]
 _COMMANDS_WITH_ARG = [
     'get_account',
@@ -26,6 +28,12 @@ _COMMANDS_WITH_ARG = [
     'list_accounts_in_ou_recursive',
     'list_org_units_in_ou',
     'list_org_units_in_ou_recursive',
+    'get_policy',
+    'get_policy_id_by_name',
+    'get_policy_name_by_id',
+    'get_targets_for_policy',
+    'get_policies_for_target',
+    'get_accounts_for_policy_recursive',
 ]
 AVAILABLE_COMMANDS = _COMMANDS + _COMMANDS_WITH_ARG
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -79,10 +87,13 @@ Available Query Commands:
     dump
     dump_accounts
     dump_org_units
+    dump_policies
     list_accounts_by_name
     list_accounts_by_id
     list_org_units_by_name
     list_org_units_by_id
+    list_policies_by_name
+    list_policies_by_id
     get_account ACCOUNT_IDENTIFIER
     get_account_id_by_name ACCOUNT_NAME
     get_account_name_by_id ACCOUNT_ID
@@ -91,6 +102,12 @@ Available Query Commands:
     list_accounts_in_ou_recursive OU_IDENTIFIER
     list_org_units_in_ou OU_IDENTIFIER
     list_org_units_in_ou_recursive OU_IDENTIFIER
+    get_policy POLICY_IDENTIFIER
+    get_policy_id_by_name POLICY_NAME
+    get_policy_name_by_id POLICY_ID
+    get_targets_for_policy POLICY_IDENTIFIER
+    get_policies_for_target POLICY_IDENTIFIER
+    get_accounts_for_policy_recursive POLICY_IDENTIFIER
 
 Examples:
 
