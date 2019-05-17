@@ -35,6 +35,8 @@ def test_jsonfmt():
     (['--role', ORG_ACCESS_ROLE, 'dump']),
     (['--role', ORG_ACCESS_ROLE, '--format', 'yaml', 'dump']),
     (['--role', ORG_ACCESS_ROLE, '--format', 'yaml', 'list_accounts_in_ou', 'root']),
+    (['--role', ORG_ACCESS_ROLE, '--debug', 'list_accounts_by_name']),
+    (['--role', ORG_ACCESS_ROLE, '--debug', '--debug', 'list_accounts_by_name']),
 ])
 def test_orgquery_success(options_list):
     org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)

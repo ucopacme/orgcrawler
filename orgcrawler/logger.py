@@ -1,16 +1,3 @@
-######################################################################################################################
-#  Copyright 2016 Amazon.com, Inc. or its affiliates. All Rights Reserved.                                           #
-#                                                                                                                    #
-#  Licensed under the Amazon Software License (the "License"). You may not use this file except in compliance        #
-#  with the License. A copy of the License is located at                                                             #
-#                                                                                                                    #
-#      http://aws.amazon.com/asl/                                                                                    #
-#                                                                                                                    #
-#  or in the "license" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES #
-#  OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions    #
-#  and limitations under the License.                                                                                #
-######################################################################################################################
-
 import json
 import logging
 from datetime import datetime, date
@@ -36,7 +23,7 @@ class Logger(object):
         mainlogger.setLevel(loglevel)
 
         logfmt = '{"time_stamp": "%(asctime)s", "log_level": "%(levelname)s", "log_message": %(message)s}\n'
-        if len(mainlogger.handlers) == 0:
+        if len(mainlogger.handlers) == 0:  # pragma: no cover
             mainlogger.addHandler(logging.StreamHandler())
         mainlogger.handlers[0].setFormatter(logging.Formatter(logfmt))
         self.log = logging.LoggerAdapter(mainlogger, {})

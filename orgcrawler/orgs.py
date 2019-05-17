@@ -348,7 +348,7 @@ class Org(object):
             policies,
             make_org_policy_object,
             func_args=(self,),
-            thread_count=len(policies)
+            thread_count=len(policies),
             logger=self.logger,
         )
         if self._exc_info:   # pragma: no cover
