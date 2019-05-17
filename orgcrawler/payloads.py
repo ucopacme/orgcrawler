@@ -3,15 +3,15 @@ import boto3
 from botocore.exceptions import ClientError
 
 
-def status_config_svcs(region, account ):    # pragma: no cover 
-   client = boto3.client('config', region_name=region, **account.credentials)
-   response = client.describe_configuration_recorder_status()
-   response.pop('ResponseMetadata')
-   if response['ConfigurationRecordersStatus']:
-       state = dict(recording=True)
-   else:
-       state = dict(recording=False)
-   return dict(ConfigurationRecordersStatus=state)
+def status_config_svcs(region, account):    # pragma: no cover
+    client = boto3.client('config', region_name=region, **account.credentials)
+    response = client.describe_configuration_recorder_status()
+    response.pop('ResponseMetadata')
+    if response['ConfigurationRecordersStatus']:
+        state = dict(recording=True)
+    else:
+        state = dict(recording=False)
+    return dict(ConfigurationRecordersStatus=state)
 
 
 def set_account_alias(region, account, alias=None):

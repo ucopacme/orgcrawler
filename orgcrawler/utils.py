@@ -28,6 +28,7 @@ def get_logger(log_level=DEFAULT_LOGLEVEL):
     my_logger.info(message)
     return my_logger
 
+
 @singledispatch
 def to_serializable(val):
     return str(val)     # pragma: no cover

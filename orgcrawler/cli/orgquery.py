@@ -3,10 +3,8 @@
 Script for querying AWS Organization resources
 """
 
-import os
-import inspect
 import click
-from orgcrawler import logger, orgs, utils
+from orgcrawler import orgs, utils
 from orgcrawler.cli.orgcrawler import print_version
 
 

@@ -2,6 +2,7 @@ import json
 import logging
 from datetime import datetime, date
 
+
 class DateTimeEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, (datetime, date)):
@@ -11,6 +12,7 @@ class DateTimeEncoder(json.JSONEncoder):
 
 
 class Logger(object):
+    # https://docs.python.org/3/howto/logging-cookbook.html
 
     def __init__(self, loglevel='warning'):
         """Initializes logging"""
@@ -48,7 +50,6 @@ class Logger(object):
         self.log.debug(self._format(message), **kwargs)
 
     def info(self, message, **kwargs):
-        ## type: (object, object) -> object
         """wrapper for logging.info call"""
         self.log.info(self._format(message), **kwargs)
 

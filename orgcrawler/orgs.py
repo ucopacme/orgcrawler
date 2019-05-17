@@ -315,15 +315,6 @@ class Org(object):
                 NextToken=response['NextToken'],
             )
             policies += response['Policies']
-            #try:
-            #    response = self._client.list_policies(
-            #        Filter='SERVICE_CONTROL_POLICY',
-            #        NextToken=response['NextToken'],
-            #    )
-            #    policies = response['Policies']
-            #except ClientError as e:
-            #    if e.response['Error']['Code'] == 'TooManyRequestsException':
-            #        continue
 
         def make_org_policy_object(policy, org):
             message = {
