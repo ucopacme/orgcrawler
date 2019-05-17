@@ -48,6 +48,8 @@ class Org(object):
         accounts (list(:obj:`OrgAccount`)): List of account in the Organization.
         org_units (list(:obj:`OrganizationalUnit`)): List of organizational
             units in the Organization.
+        policies list(:obj:`OrgPolicy`)): List of Service Control Policies in
+            the Organization.
 
     """
 
