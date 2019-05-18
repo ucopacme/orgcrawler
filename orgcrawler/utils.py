@@ -69,7 +69,6 @@ def yamlfmt(obj):
         return yaml.dump(str(obj))
 
 
-
 def assume_role_in_account(account_id, role_name):
     # any exceptions must be caugh by calling function
     role_arn = 'arn:aws:iam::{}:role/{}'.format(account_id, role_name)
