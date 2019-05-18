@@ -63,7 +63,11 @@ def jsonfmt(obj, default=to_serializable):
 def yamlfmt(obj):
     if isinstance(obj, str):
         return obj
-    return yaml.dump(obj, default_flow_style=False)
+    try:
+        return yaml.dump(obj, default_flow_style=False)
+    except Exception:  # pragma: no cover
+        return yaml.dump(str(obj))
+
 
 
 def assume_role_in_account(account_id, role_name):

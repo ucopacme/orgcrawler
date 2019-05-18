@@ -38,7 +38,7 @@ setup(
     install_requires=[
         'botocore',
         'boto3',
-        'PyYAML<=3.13,>=3.10',
+        'PyYAML',
         'click',
     ],
     packages=find_packages(exclude=['dist', 'test']),

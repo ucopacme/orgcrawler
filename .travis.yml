@@ -13,6 +13,6 @@ install:
   - pip install .
   - pip list
 script: 
-  - flake8 organizer
+  - flake8 orgcrawler
   - pytest
 
