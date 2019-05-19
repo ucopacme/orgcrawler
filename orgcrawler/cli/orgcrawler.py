@@ -12,9 +12,6 @@ from orgcrawler.cli.utils import (
 )
 
 
-CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
-
-
 def print_version(ctx, param, value):
     if not value or ctx.resilient_parsing:
         return
@@ -22,7 +19,7 @@ def print_version(ctx, param, value):
     ctx.exit()
 
 
-@click.command(context_settings=CONTEXT_SETTINGS)
+@click.command(context_settings=dict(help_option_names=['-h', '--help']))
 @click.argument('payload')
 @click.argument('payload_arg', nargs=-1)
 @click.option('--master-role', '-r',
@@ -35,9 +32,9 @@ def print_version(ctx, param, value):
     help='Comma separated list of accounts to crawl. Can be account Id, name or '
          'alias. Default is all accounts in organization.')
 @click.option('--regions',
-    help='Comma separated list of AWS regions to crawl Default is all regions.')
+    help='Comma separated list of AWS regions to crawl. Default is all regions.')
 @click.option('--service',
-    help='The AWS service used to select region list.')
+    help='The AWS service used to select region list.  Especially useful for payloads which call global services.')
 @click.option('--payload-file', '-f',
     type=click.Path(exists=True),
     help='Path to file containing payload function.')
@@ -49,11 +46,26 @@ def print_version(ctx, param, value):
     help='Display version info and exit.')
 def main(master_role, account_role, regions, accounts,
         service, payload_file, payload, payload_arg):
+    """
+Arguments:
 
-    ''' Where 'PAYLOAD' is name of the payload function to run in each account,
-    and 'PAYLOAD_ARG' is, you guessed it, any payload function argument(s).
-    Orgcrawler attempts to resolve payload function name from $PYTHON_PATH '''
+    \b
+    PAYLOAD       Name of the payload function to run in each account
+    PAYLOAD_ARG   The payload function argument(s) if any
 
+Orgcrawler attempts to resolve payload function name from $PYTHON_PATH
+
+Examples:
+
+    \b
+    orgcrawler -h
+    orgcrawler -r OrgMasterRole orgcrawler.payloads.list_buckets
+    orgcrawler -r OrgMasterRole --account-role S3Admin orgcrawler.payloads.list_buckets
+    orgcrawler -r OrgMasterRole --service codecommit -f ~/my_payloads.py list_cc_repositories
+    orgcrawler -r OrgMasterRole --service iam orgcrawler.payloads.get_account_aliases
+    orgcrawler -r OrgMasterRole --accounts app-test,app-prod \\
+            --regions us-east-1,us-west-2 orgcrawler.payloads.config_describe_rules
+    """
     crawler_args = dict()
     if accounts:
         crawler_args['accounts'] = accounts.split(',')

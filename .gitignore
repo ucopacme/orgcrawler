@@ -13,3 +13,4 @@ build
 .coverage
 .coverage.*
 docs/_build
+tmp

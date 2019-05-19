@@ -100,6 +100,7 @@ Available Query Commands:
     get_account ACCOUNT_IDENTIFIER
     get_account_id_by_name ACCOUNT_NAME
     get_account_name_by_id ACCOUNT_ID
+    get_org_unit OU_IDENTIFIER
     get_org_unit_id OU_IDENTIFIER
     list_accounts_in_ou OU_IDENTIFIER
     list_accounts_in_ou_recursive OU_IDENTIFIER
@@ -116,7 +117,7 @@ Examples:
 
     \b
     orgquery -r OrgMasterRole list_accounts_by_name
-    orgquery -r OrgMasterRole -f json get_account_id_by_name webapps
+    orgquery -r OrgMasterRole -f yaml get_account_id_by_name webapps
     """
 
     if format == 'json':

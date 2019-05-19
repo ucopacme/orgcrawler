@@ -14,6 +14,16 @@ def status_config_svcs(region, account):    # pragma: no cover
     return dict(ConfigurationRecordersStatus=state)
 
 
+def iam_list_users(region, account):
+    client = boto3.client('iam', region_name=region, **account.credentials)
+    response = client.list_users()
+    collector = response['Users']
+    if 'IsTruncated' in response and response['IsTruncated']:   # pragma: no cover
+        response = client.list_users(Marker=response['Marker'])
+        collector += response['Users']
+    return dict(Users=collector)
+
+
 def set_account_alias(region, account, alias=None):
     client = boto3.client('iam', region_name=region, **account.credentials)
     if alias is None:
