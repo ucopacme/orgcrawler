@@ -1,6 +1,13 @@
 language: python
 python:
   - 3.6
+# Enable 3.7 without globally enabling sudo and dist: xenial for other build jobs
+# see: https://github.com/travis-ci/travis-ci/issues/9815
+matrix:
+  include:
+    - python: 3.7
+      dist: xenial
+      sudo: true
 before_install:
   - env
   - whoami
@@ -8,10 +15,10 @@ before_install:
   - export BOTO_CONFIG=/dev/null
 install:
   - pip install -r requirements.txt
-  - pip install https://github.com/spulec/moto/archive/master.zip
+  - pip install https://github.com/ashleygould/moto/archive/development.zip
   - pip install .
   - pip list
 script: 
-  - flake8 organizer
+  - flake8 orgcrawler
   - pytest
 

@@ -85,7 +85,7 @@ def test_queue_threads():
     assert len(collector) == 10
     for item in collector:
         assert re.compile(r'item-[0-9]').match(item)
-    assert int((stoptime - starttime) *10) == 1
+    assert int((stoptime - starttime) *10) < 5
 
 
 def test_regions_for_service():

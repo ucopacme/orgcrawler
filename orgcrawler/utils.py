@@ -6,11 +6,27 @@ except ImportError:     # pragma: no cover
     import Queue as queue
 import json
 import yaml
+import inspect
 from datetime import datetime
 from functools import singledispatch
 
 import boto3
 from botocore.exceptions import ClientError
+
+from orgcrawler.logger import Logger
+
+
+DEFAULT_LOGLEVEL = 'error'
+
+
+def get_logger(log_level=DEFAULT_LOGLEVEL):
+    my_logger = Logger(loglevel=log_level)
+    message = {
+        'FILE': __file__.split('/')[-1],
+        'METHOD': inspect.stack()[0][3],
+    }
+    my_logger.info(message)
+    return my_logger
 
 
 @singledispatch
@@ -47,7 +63,10 @@ def jsonfmt(obj, default=to_serializable):
 def yamlfmt(obj):
     if isinstance(obj, str):
         return obj
-    return yaml.dump(obj, default_flow_style=False)
+    try:
+        return yaml.dump(obj, default_flow_style=False)
+    except Exception:  # pragma: no cover
+        return yaml.dump(str(obj))
 
 
 def assume_role_in_account(account_id, role_name):
@@ -88,8 +107,16 @@ def get_master_account_id(role_name=None):
         sys.exit(e)
 
 
-def queue_threads(sequence, func, func_args=(), thread_count=20):
+def queue_threads(sequence, func, func_args=(), thread_count=20, logger=get_logger()):
     """generalized abstraction for running queued tasks in a thread pool"""
+    message = {
+        'FILE': __file__.split('/')[-1],
+        'METHOD': inspect.stack()[0][3],
+        'func': func,
+        'func_args': func_args,
+    }
+    logger.info(message)
+
     def worker(*args):
         while not q.empty():
             item = q.get()
