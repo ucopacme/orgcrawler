@@ -3,6 +3,7 @@
 *.vpc
 *.pyc
 __pycache__
+.eggs
 *.egg-info
 .cache/
 .pytest_cache

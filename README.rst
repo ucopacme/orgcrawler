@@ -15,13 +15,15 @@ OrgCrawler package exports two primary classes:
 ``orgcrawler.crawlers.Crawler``
   provides a framework for executing user defined python code in all accounts and regions or a subset thereof. 
 
+OrgCrawler also contains two commandline scripts:
 
-OrgCrawler also contains two console scripts: ``orgquery`` and ``orgcrawler``.
-These attempt to provide a generic interface for running organization queries
-and custom crawler functions from the commandline.
+``orgquery``
+  Provides a generic interface for running organization queries
 
+``orgcrawler``
+  Execute a custom boto3 payload function in all specified accounts/regions
 
-See full documentation as https://orgcrawler.readthedocs.io/en/latest/
+See full documentation at https://orgcrawler.readthedocs.io/en/latest/
 
 Currently orgcrawler is tested in python 3.6, 3.7.
 

@@ -1,28 +1,52 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
-import io
-from setuptools import setup, find_packages
+from setuptools import setup, find_namespace_packages
 
-here = os.path.abspath(os.path.dirname(__file__))
 
-# gather the package's long description from the README
-with io.open(os.path.join(here, 'README.rst'), encoding='utf-8') as f:
-    long_description = '\n' + f.read()
+VERSION = '1.0.0a3'
+LONGDESC = '''
+Getting Started with OrgCrawler
+===============================
 
-# load the package's __init__.py module as a dictionary.
-about = {}
-with open(os.path.join(here, 'orgcrawler/__init__.py')) as f:
-    exec(f.read(), about)
+A python library for managing resources across all accounts in an AWS Organization.
+
+OrgCrawler package exports two primary classes:
+
+``orgcrawler.orgs.Org``
+  provides a data model and methods for querying AWS Organizations resources:
+
+  - accounts
+  - organizational units
+  - service control policies
+
+``orgcrawler.crawlers.Crawler``
+  provides a framework for executing user defined python code in all accounts and regions or a subset thereof.
+
+OrgCrawler also contains two commandline scripts:
+
+``orgquery``
+  Provides a generic interface for running organization queries
+
+``orgcrawler``
+  Execute a custom boto3 payload pythonfunction in all specified accounts/regions
+
+See full documentation at https://orgcrawler.readthedocs.io/en/latest/
+'''
+
 
 setup(
     name='orgcrawler',
-    version=about['__version__'],
+    version=VERSION,
     description='Tools for working with AWS Organizations',
-    long_description=long_description,
+    long_description=LONGDESC,
     long_description_content_type='text/x-rst',
     url='https://github.com/ucopacme/orgcrawler',
+    project_urls={
+        'Documentation': 'https://orgcrawler.readthedocs.io/en/latest/',
+        'Issues': 'https://github.com/ucopacme/orgcrawler/issues',
+    },
+
     keywords='aws organizations boto3',
     author='Ashley Gould - University of California Office of the President',
     author_email='agould@ucop.edu',
@@ -41,7 +65,7 @@ setup(
         'PyYAML',
         'click',
     ],
-    packages=find_packages(exclude=['dist', 'test']),
+    packages=find_namespace_packages(include=['orgcrawler.*']),
     include_package_data=True,
     zip_safe=False,
     entry_points={

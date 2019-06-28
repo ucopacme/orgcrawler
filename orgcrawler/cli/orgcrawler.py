@@ -2,21 +2,14 @@
 
 import click
 
-import orgcrawler
 from orgcrawler.utils import jsonfmt, regions_for_service
 from orgcrawler.cli.utils import (
     setup_crawler,
     format_responses,
     get_payload_function_from_string,
     get_payload_function_from_file,
+    print_version,
 )
-
-
-def print_version(ctx, param, value):
-    if not value or ctx.resilient_parsing:
-        return
-    click.echo(orgcrawler.__version__)
-    ctx.exit()
 
 
 @click.command(context_settings=dict(help_option_names=['-h', '--help']))

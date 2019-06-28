@@ -5,7 +5,7 @@ Script for querying AWS Organization resources
 
 import click
 from orgcrawler import orgs, utils
-from orgcrawler.cli.orgcrawler import print_version
+from orgcrawler.cli.utils import print_version
 
 
 _COMMANDS = [

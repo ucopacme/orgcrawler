@@ -33,7 +33,7 @@ def test_get_payload_function_from_string():
 
 def test_get_payload_function_from_file():
     print(orgcrawler.__path__)
-    payload_file = os.path.join(orgcrawler.__path__[0], 'payloads.py')
+    payload_file = '../../orgcrawler/payloads.py'
     payload = get_payload_function_from_file(payload_file, 'list_buckets')
     assert payload.__code__.co_filename == payloads.list_buckets.__code__.co_filename
 
