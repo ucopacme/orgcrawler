@@ -24,6 +24,31 @@ def iam_list_users(region, account):
     return dict(Users=collector)
 
 
+def iam_list_user_loginprofiles(region, account):  # pragma: no cover
+    '''
+    orgcrawler -r awsauth/OrgAdmin --service iam orgcrawler.payloads.iam_list_user_loginprofiles \
+    --accounts ait-poc,ait-training,big-test,eat-poc,eoc-poc,finapps-poc,iso-poc,ppers-poc,syseng-poc,seg-peoplesoftpoc,ucop-itssandbox-eas,ucpathops-poc,was-poc \
+    | tee ~/tmp/login_profiles.json
+    '''
+    client = boto3.client('iam', region_name=region, **account.credentials)
+    response = client.list_users()
+    users = response['Users']
+    if 'IsTruncated' in response and response['IsTruncated']:   # pragma: no cover
+        response = client.list_users(Marker=response['Marker'])
+        users += response['Users']
+    login_profiles = []
+    for user in users:
+        try:
+            response = client.get_login_profile(UserName=user['UserName'])
+            profile = response['LoginProfile']
+            profile['PasswordLastUsed'] = user.get('PasswordLastUsed', "")
+            login_profiles.append(profile)
+        except ClientError as e:
+            if e.response['Error']['Code'] == 'NoSuchEntity':
+                continue
+    return dict(LoginProfiles=login_profiles)
+
+
 def set_account_alias(region, account, alias=None):
     client = boto3.client('iam', region_name=region, **account.credentials)
     if alias is None:
@@ -149,3 +174,23 @@ def check_cloudtrail_status(region, account):   # pragma: no cover
                 status="enabled",
             ))
     return dict(TrailAccounts=trail_accounts)
+
+
+def list_ec2_instances(region, account):    # pragma: no cover
+    '''
+    orgcrawler -r OrganizationAccountAccessRole --regions us-west-2,us-east-1 orgcrawler.payloads.list_ec2_instances | jq -r '.[].Regions[].Output.Reservations[].Instances[]| select(.State.Name == "running") | .PrivateIpAddress'
+    '''
+    client = boto3.client('ec2', region_name=region, **account.credentials)
+    response = client.describe_instances()
+    response.pop('ResponseMetadata')
+    return response
+
+
+def list_vpn_gateways(region, account):    # pragma: no cover
+    '''
+    orgcrawler -r OrganizationAccountAccessRole --regions us-west-2,us-east-1 orgcrawler.payloads.list_vpn_gateways | jq -r '.[].Regions[].Output.VpnGateways[] | select(.State == "available") | .VpcAttachments[].VpcId'
+    '''
+    client = boto3.client('ec2', region_name=region, **account.credentials)
+    response = client.describe_vpn_gateways()
+    response.pop('ResponseMetadata')
+    return response

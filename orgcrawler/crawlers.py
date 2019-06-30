@@ -63,6 +63,26 @@ class Crawler(object):
         self.regions = regions
         self.validate_regions()
 
+    def get_accounts(self):
+        return self.accounts
+
+    def update_accounts(self, accounts):
+        '''
+        Args:
+            accounts (str, list(str), list(OrgAccount), None)
+
+        Resets Cralwer.accounts list in place.  If `accounts` is None, sets
+        Cralwer.accounts to an empty list.  If `accounts` is keyword "ALL", sets
+        Cralwer.accounts to all accounts in the Organization.
+        '''
+        if accounts == 'ALL':
+            self.accounts = self.org.accounts
+        elif accounts is None:
+            self.accounts = []
+        else:
+            self.accounts = accounts
+            self.validate_accounts()
+
     def load_account_credentials(self):
         def get_credentials_for_account(account, crawler):
             try:

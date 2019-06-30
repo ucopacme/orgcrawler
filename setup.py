@@ -4,7 +4,7 @@
 from setuptools import setup, find_namespace_packages
 
 
-VERSION = '1.0.0a3'
+VERSION = '1.0.0a4'
 LONGDESC = '''
 Getting Started with OrgCrawler
 ===============================
@@ -65,8 +65,10 @@ setup(
         'PyYAML',
         'click',
     ],
-    packages=find_namespace_packages(include=['orgcrawler.*']),
-    include_package_data=True,
+    packages=find_namespace_packages(
+        include=['orgcrawler', 'orgcrawler.*'],
+        #exclude=['test', 'docs'],
+    ),
     zip_safe=False,
     entry_points={
         'console_scripts': [

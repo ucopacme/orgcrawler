@@ -198,6 +198,40 @@ def test_get_or_update_regions():
 @mock_sts
 @mock_organizations
 @mock_iam
+def test_get_or_update_accounts():
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
+    org.load()
+    crawler = crawlers.Crawler(org)
+    assert crawler.get_accounts() == crawler.accounts
+    crawler.update_accounts('account01')
+    assert len(crawler.accounts) == 1
+    assert isinstance(crawler.accounts[0], orgs.OrgAccount)
+    assert crawler.accounts[0].name == 'account01'
+    crawler.update_accounts(['account01', 'account02'])
+    assert len(crawler.accounts) == 2
+    assert isinstance(crawler.accounts[0], orgs.OrgAccount)
+    assert isinstance(crawler.accounts[1], orgs.OrgAccount)
+    assert crawler.accounts[0].name == 'account01'
+    assert crawler.accounts[1].name == 'account02'
+    crawler.update_accounts('ALL')
+    assert crawler.accounts == crawler.org.accounts
+    crawler.update_accounts([])
+    assert len(crawler.accounts) == 0
+    crawler.update_accounts(None)
+    assert len(crawler.accounts) == 0
+    crawler.update_accounts(None)
+    with pytest.raises(ValueError) as e:
+        crawler.update_accounts('')
+    with pytest.raises(ValueError) as e:
+        crawler.update_accounts(1234)
+    with pytest.raises(ValueError) as e:
+        crawler.update_accounts(dict())
+
+
+@mock_sts
+@mock_organizations
+@mock_iam
 @mock_s3
 def test_execute():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
