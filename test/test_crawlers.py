@@ -1,8 +1,6 @@
-#import re
-#import botocore
-from inspect import isfunction
 import time
-import boto3
+from inspect import isfunction
+
 import pytest
 from moto import (
     mock_organizations,
@@ -12,40 +10,15 @@ from moto import (
 )
 
 from orgcrawler import crawlers, orgs, utils
-from .test_orgs import (
-    MASTER_ACCOUNT_ID,
+from orgcrawler.mock.org import (
+    MockOrganization,
     ORG_ACCESS_ROLE,
-    SIMPLE_ORG_SPEC,
-    COMPLEX_ORG_SPEC,
-    build_mock_org,
+    MASTER_ACCOUNT_ID,
 )
+from orgcrawler.mock.payload import *
 
 
 ALL_REGIONS = utils.all_regions()
-
-def set_account_alias(region, account):
-    client = boto3.client('iam', region_name=region, **account.credentials)
-    client.create_account_alias(AccountAlias='alias-' + account.name)
-    return 
-
-
-def get_account_alias(region, account):
-    client = boto3.client('iam', region_name=region, **account.credentials)
-    response = client.list_account_aliases()
-    return response['AccountAliases']
-
-
-def create_mock_bucket(region, account, bucket_prefix):
-    client = boto3.client('s3', region_name=region, **account.credentials)
-    response = client.create_bucket(Bucket='-'.join([bucket_prefix, account.id]))
-    return response
-
-
-def bad_payload_func(region, account):
-    client = boto3.client('ec2', region_name=region, **account.credentials)
-    response = client.create_instance(BadParam='bogus')
-    return response
-
 
 def test_crawler_timer_init():
     timer = crawlers.CrawlerTimer()
@@ -63,8 +36,8 @@ def test_crawler_timer_init():
 @mock_sts
 @mock_organizations
 def test_crawler_response_init():
+    MockOrganization().simple()
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
     org.load()
     response = crawlers.CrawlerResponse('us-east-1', org.accounts[0])
     assert response.region == 'us-east-1'
@@ -72,31 +45,27 @@ def test_crawler_response_init():
     assert response.payload_output is None
     assert isinstance(response.timer, crawlers.CrawlerTimer)
     assert isinstance(response.dump(), dict)
-    #print(utils.jsonfmt(response.dump()))
-    #assert False
 
 
 @mock_sts
 @mock_organizations
 def test_crawler_execution_init():
+    MockOrganization().simple()
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
     org.load()
-    execution = crawlers.CrawlerExecution(get_account_alias)
+    execution = crawlers.CrawlerExecution(get_mock_account_alias)
     assert isfunction(execution.payload)
-    assert execution.name == 'get_account_alias'
+    assert execution.name == 'get_mock_account_alias'
     assert execution.responses == []
     assert isinstance(execution.timer, crawlers.CrawlerTimer)
     assert isinstance(execution.dump(), dict)
-    #print(utils.jsonfmt(execution.dump()))
-    #assert False
 
 
 @mock_sts
 @mock_organizations
 def test_crawler_init():
+    MockOrganization().complex()
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
     org.load()
     crawler = crawlers.Crawler(org)
     assert isinstance(crawler, crawlers.Crawler)
@@ -165,8 +134,8 @@ def test_crawler_init():
 @mock_sts
 @mock_organizations
 def test_load_account_credentials():
+    MockOrganization().complex()
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
     org.load()
     crawler = crawlers.Crawler(org)
     crawler.load_account_credentials()
@@ -180,8 +149,8 @@ def test_load_account_credentials():
 @mock_organizations
 @mock_iam
 def test_get_or_update_regions():
+    MockOrganization().complex()
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
     org.load()
     crawler = crawlers.Crawler(org)
     assert crawler.get_regions() == ALL_REGIONS
@@ -197,10 +166,9 @@ def test_get_or_update_regions():
 
 @mock_sts
 @mock_organizations
-@mock_iam
 def test_get_or_update_accounts():
+    MockOrganization().complex()
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
     org.load()
     crawler = crawlers.Crawler(org)
     assert crawler.get_accounts() == crawler.accounts
@@ -234,13 +202,13 @@ def test_get_or_update_accounts():
 @mock_iam
 @mock_s3
 def test_execute():
+    MockOrganization().complex()
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
-    org_id, root_id = build_mock_org(COMPLEX_ORG_SPEC)
     org.load()
     crawler = crawlers.Crawler(org)
     crawler.load_account_credentials()
-    execution1= crawler.execute(set_account_alias)
-    execution2 = crawler.execute(get_account_alias)
+    execution1= crawler.execute(set_mock_account_alias)
+    execution2 = crawler.execute(get_mock_account_alias)
     assert len(crawler.executions) == 2
     assert execution1 == crawler.executions[0]
     assert execution2 == crawler.executions[1]
@@ -249,8 +217,8 @@ def test_execute():
         assert len(execution.responses) == len(crawler.accounts) * len(crawler.regions)
         for response in execution.responses:
             assert isinstance(response, crawlers.CrawlerResponse)
-    assert crawler.executions[0].name == 'set_account_alias'
-    assert crawler.executions[1].name == 'get_account_alias'
+    assert crawler.executions[0].name == 'set_mock_account_alias'
+    assert crawler.executions[1].name == 'get_mock_account_alias'
     for response in crawler.executions[0].responses:
         assert response.payload_output is None
     for response in crawler.executions[1].responses:
@@ -264,9 +232,69 @@ def test_execute():
     for response in execution3.responses:
         assert response.payload_output['ResponseMetadata']['HTTPStatusCode'] == 200
 
-    assert crawler.get_execution('set_account_alias') == crawler.executions[0]
-    assert crawler.get_execution('get_account_alias') == crawler.executions[1]
+    assert crawler.get_execution('set_mock_account_alias') == crawler.executions[0]
+    assert crawler.get_execution('get_mock_account_alias') == crawler.executions[1]
     assert crawler.get_execution('create_mock_bucket') == crawler.executions[2]
 
     with pytest.raises(SystemExit):
         bad_execution = crawler.execute(bad_payload_func)
+
+
+args = ('cat', 'dog', 'rat')
+two_args = ('dog', 'rat')
+kwargs = dict(
+    kwarg1='horse',
+    kwarg2='sheep',
+    kwarg3='cow',
+)
+two_kwargs = dict(
+    kwarg2='sheep',
+    kwarg3='cow',
+)
+args_dict = dict(
+    arg1='cat',
+    arg2='dog',
+    arg3='rat',
+)
+all_args = dict(
+    arg1='cat',
+    arg2='dog',
+    arg3='rat',
+    kwarg1='horse',
+    kwarg2='sheep',
+    kwarg3='cow',
+)
+
+
+@mock_sts
+@mock_organizations
+def test_execute_parameter_handling():
+    MockOrganization().simple()
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    org.load()
+    crawler = crawlers.Crawler(org, accounts='account01', regions='us-east-1')
+    crawler.load_account_credentials()
+
+    execution = crawler.execute(positional_params, 'cat', 'dog', 'rat')
+    assert execution.responses[0].payload_output['params'] == args_dict
+    execution = crawler.execute(positional_params, *args)
+    assert execution.responses[0].payload_output['params'] == args_dict
+    execution = crawler.execute(positional_params, 'cat', *two_args)
+    assert execution.responses[0].payload_output['params'] == args_dict
+
+    execution = crawler.execute(kwarg_params, kwarg3='cow', kwarg2='sheep', kwarg1='horse')
+    assert execution.responses[0].payload_output['params'] == kwargs
+    execution = crawler.execute(kwarg_params, **kwargs)
+    assert execution.responses[0].payload_output['params'] == kwargs
+    execution = crawler.execute(kwarg_params, kwarg1='horse', **two_kwargs)
+    assert execution.responses[0].payload_output['params'] == kwargs
+
+    execution = crawler.execute(mixed_params,
+        'cat', 'dog', 'rat',
+        kwarg3='cow', kwarg2='sheep', kwarg1='horse',
+    )
+    assert execution.responses[0].payload_output['params'] == all_args
+    execution = crawler.execute(mixed_params, *args, **kwargs)
+    assert execution.responses[0].payload_output['params'] == all_args
+    execution = crawler.execute(mixed_params, 'cat', *two_args, kwarg1='horse', **two_kwargs)
+    assert execution.responses[0].payload_output['params'] == all_args

@@ -7,12 +7,12 @@ from moto import (
 )
 
 import orgcrawler
-from orgcrawler import payloads
 from orgcrawler.cli import orgcrawler
-from ..test_orgs import (
+from orgcrawler.mock import payload
+from orgcrawler.mock.org import (
+    MockOrganization,
+    MASTER_ACCOUNT_ID,
     ORG_ACCESS_ROLE,
-    SIMPLE_ORG_SPEC,
-    build_mock_org,
 )
 
 
@@ -22,15 +22,24 @@ from ..test_orgs import (
 @pytest.mark.parametrize('options_list', [
     (['--help']),
     (['--version']),
-    (['--master-role', ORG_ACCESS_ROLE, 'orgcrawler.payloads.get_account_aliases']),
-    (['-r', ORG_ACCESS_ROLE, '--accounts', 'account01,account02', 'orgcrawler.payloads.get_account_aliases']),
-    (['-r', ORG_ACCESS_ROLE, '--regions', 'us-west-2', 'orgcrawler.payloads.get_account_aliases']),
-    (['-r', ORG_ACCESS_ROLE, '--service', 'iam', 'orgcrawler.payloads.get_account_aliases']),
-    (['-r', ORG_ACCESS_ROLE, 'orgcrawler.payloads.get_account_aliases', '--account-role', ORG_ACCESS_ROLE]),
-    (['-r', ORG_ACCESS_ROLE, 'get_account_aliases', '--payload-file', payloads.__file__]),
+    (['--master-role', ORG_ACCESS_ROLE, 'orgcrawler.mock.payload.get_mock_account_alias']),
+    (['-r', ORG_ACCESS_ROLE, '--accounts', 'account01,account02', 'orgcrawler.mock.payload.get_mock_account_alias']),
+    (['-r', ORG_ACCESS_ROLE, '--regions', 'us-west-2', 'orgcrawler.mock.payload.get_mock_account_alias']),
+    (['-r', ORG_ACCESS_ROLE, '--service', 'iam', 'orgcrawler.mock.payload.get_mock_account_alias']),
+    (['-r', ORG_ACCESS_ROLE, 'orgcrawler.mock.payload.get_mock_account_alias', '--account-role', ORG_ACCESS_ROLE]),
+    (['-r', ORG_ACCESS_ROLE, 'get_mock_account_alias', '--payload-file', payload.__file__]),
+    (['-r', ORG_ACCESS_ROLE, '--service', 'iam', 'orgcrawler.mock.payload.mixed_params',
+        'cat', 'dog', 'rat', 'kwarg3=cow', 'kwarg2=sheep', 'kwarg1=horse',
+    ]),
+    (['-r', ORG_ACCESS_ROLE, '--service', 'iam', 'orgcrawler.mock.payload.mixed_params',
+        'cat', 'dog', 'rat',
+    ]),
+    (['-r', ORG_ACCESS_ROLE, '--service', 'iam', 'orgcrawler.mock.payload.mixed_params',
+        'cat', 'dog', 'rat', 'kwarg3=cow',
+    ]),
 ])
 def test_orgcrawler_success(options_list):
-    org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
+    MockOrganization().simple()
     runner = CliRunner()
     result = runner.invoke(
         orgcrawler.main,
@@ -46,19 +55,35 @@ def test_orgcrawler_success(options_list):
     (['--blee']),
     (['--master-role']),
     (['--master-role', 'blee']),
-    (['--master-role', ORG_ACCESS_ROLE, 'orgcrawler.payloads.blee']),
-    (['-r', ORG_ACCESS_ROLE, 'orgcrawler.payloads.get_account_aliases', '--accounts']),
-    (['-r', ORG_ACCESS_ROLE, 'orgcrawler.payloads.get_account_aliases', '--accounts', 'blee']),
-    (['-r', ORG_ACCESS_ROLE, 'orgcrawler.payloads.get_account_aliases', '--regions']),
-    (['-r', ORG_ACCESS_ROLE, 'orgcrawler.payloads.get_account_aliases', '--regions', 'blee']),
-    (['-r', ORG_ACCESS_ROLE, 'orgcrawler.payloads.get_account_aliases', '--service']),
-    (['-r', ORG_ACCESS_ROLE, 'orgcrawler.payloads.get_account_aliases', '--service', 'blee']),
-    (['-r', ORG_ACCESS_ROLE, 'orgcrawler.payloads.get_account_aliases', '--account-role']),
-    (['-r', ORG_ACCESS_ROLE, '--payload-file', '/no/such/file', 'get_account_aliases']),
-    (['-r', ORG_ACCESS_ROLE, '--payload-file', payloads.__file__, 'blee']),
+    (['--master-role', ORG_ACCESS_ROLE, 'orgcrawler.mock.payload.blee']),
+    (['-r', ORG_ACCESS_ROLE, 'orgcrawler.mock.payload.get_mock_account_alias', '--accounts']),
+    (['-r', ORG_ACCESS_ROLE, 'orgcrawler.mock.payload.get_mock_account_alias', '--accounts', 'blee']),
+    (['-r', ORG_ACCESS_ROLE, 'orgcrawler.mock.payload.get_mock_account_alias', '--regions']),
+    (['-r', ORG_ACCESS_ROLE, 'orgcrawler.mock.payload.get_mock_account_alias', '--regions', 'blee']),
+    (['-r', ORG_ACCESS_ROLE, 'orgcrawler.mock.payload.get_mock_account_alias', '--service']),
+    (['-r', ORG_ACCESS_ROLE, 'orgcrawler.mock.payload.get_mock_account_alias', '--service', 'blee']),
+    (['-r', ORG_ACCESS_ROLE, 'orgcrawler.mock.payload.get_mock_account_alias', '--account-role']),
+    (['-r', ORG_ACCESS_ROLE, '--payload-file', '/no/such/file', 'get_mock_account_alias']),
+    (['-r', ORG_ACCESS_ROLE, '--payload-file', payload.__file__, 'blee']),
+
+    #(['-r', ORG_ACCESS_ROLE, '--service', 'iam', 'orgcrawler.mock.payload.positional_params',
+    #    'cat', 'dog', 'rat', 'cow',
+    #]),
+    #(['-r', ORG_ACCESS_ROLE, '--service', 'iam', 'orgcrawler.mock.payload.positional_params',
+    #    'cat', 'dog',
+    #]),
+    (['-r', ORG_ACCESS_ROLE, '--service', 'iam', 'orgcrawler.mock.payload.kwargs_params',
+        'cat', 'kwarg3=cow', 'kwarg2=sheep', 'kwarg1=horse',
+    ]),
+    (['-r', ORG_ACCESS_ROLE, '--service', 'iam', 'orgcrawler.mock.payload.kwargs_params',
+        'kwarg4=cat', 'kwarg3=cow', 'kwarg2=sheep',
+    ]),
+    #(['-r', ORG_ACCESS_ROLE, '--service', 'iam', 'orgcrawler.mock.payload.mixed_params',
+    #    'cat', 'dog', 'rat', 'snake', 'kwarg3=cow', 'kwarg2=sheep', 'kwarg1=horse',
+    #]),
 ])
 def test_orgcrawler_failure(options_list):
-    org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
+    MockOrganization().simple()
     runner = CliRunner()
     result = runner.invoke(
         orgcrawler.main,

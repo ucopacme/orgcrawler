@@ -106,16 +106,15 @@ class Crawler(object):
         if self.exc_info:   # pragma: no cover
             raise self.exc_info[1].with_traceback(self.exc_info[2])
 
-    # ISSUES: # should we forgo use of *args, just allow **kwargs?
     def execute(self, payload, *args, **kwargs):
 
-        def run_payload_in_account(account_region_map, execution, *args):
+        def run_payload_in_account(account_region_map, execution, args, kwargs):
             region = account_region_map['region']
             account = account_region_map['account']
             response = CrawlerResponse(region, account)
             response.timer.start()
             try:
-                response.payload_output = execution.payload(region, account, *args)
+                response.payload_output = execution.payload(region, account, *args, **kwargs)
             except Exception:
                 response.exc_info = sys.exc_info()
                 execution.errors = True
@@ -132,7 +131,7 @@ class Crawler(object):
         utils.queue_threads(
             accounts_and_regions,
             run_payload_in_account,
-            func_args=(execution, *args),
+            func_args=(execution, args, kwargs),
             thread_count=thread_count,
         )
         execution.timer.stop()

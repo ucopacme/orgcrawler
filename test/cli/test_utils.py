@@ -7,7 +7,8 @@ from moto import (
 )
 
 import orgcrawler
-from orgcrawler import crawlers, payloads
+from orgcrawler import crawlers
+from orgcrawler.orgs import Org
 from orgcrawler.utils import yamlfmt
 from orgcrawler.cli.utils import (
     get_payload_function_from_string,
@@ -15,35 +16,32 @@ from orgcrawler.cli.utils import (
     setup_crawler,
     format_responses,
 )
-
-from ..test_orgs import (
+from orgcrawler.mock import payload
+from orgcrawler.mock.org import (
+    MockOrganization,
     ORG_ACCESS_ROLE,
-    SIMPLE_ORG_SPEC,
-    build_mock_org,
-    clean_up,
 )
 
 
 def test_get_payload_function_from_string():
     payload = get_payload_function_from_string(
-        'orgcrawler.payloads.get_account_aliases'
+        'orgcrawler.mock.payload.get_mock_account_alias'
     )
-    assert payload == payloads.get_account_aliases
+    assert payload == orgcrawler.mock.payload.get_mock_account_alias
 
 
 def test_get_payload_function_from_file():
-    print(orgcrawler.__path__)
-    payload_file = '../../orgcrawler/payloads.py'
-    payload = get_payload_function_from_file(payload_file, 'list_buckets')
-    assert payload.__code__.co_filename == payloads.list_buckets.__code__.co_filename
+    payload_file = '../../orgcrawler/mock/payload.py'
+    payload_function = get_payload_function_from_file(payload_file, 'get_mock_account_alias')
+    assert payload_function.__code__.co_filename == payload.get_mock_account_alias.__code__.co_filename
 
 
 @mock_sts
 @mock_organizations
 @mock_iam
 def test_setup_crawler():
-    clean_up()
-    org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
+    Org('no_id', 'no_role').clear_cache()
+    MockOrganization().simple()
     crawler = setup_crawler(ORG_ACCESS_ROLE)
     assert isinstance(crawler, crawlers.Crawler)
     assert len(crawler.org.accounts) == 3
@@ -74,10 +72,10 @@ def test_setup_crawler():
 @mock_organizations
 @mock_iam
 def test_format_responses():
-    org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
+    MockOrganization().simple()
     crawler = setup_crawler(ORG_ACCESS_ROLE)
-    crawler.execute(payloads.get_account_aliases)
-    execution = crawler.execute(payloads.get_account_aliases)
+    crawler.execute(payload.get_mock_account_alias)
+    execution = crawler.execute(payload.get_mock_account_alias)
     execution_responses = format_responses(execution)
     print(yamlfmt(execution_responses))
     assert isinstance(execution_responses, list)

@@ -6,11 +6,10 @@ from moto import (
 )
 from orgcrawler import orgs, utils
 from orgcrawler.cli import orgquery
-from ..test_orgs import (
+from orgcrawler.mock.org import (
+    MockOrganization,
     MASTER_ACCOUNT_ID,
     ORG_ACCESS_ROLE,
-    SIMPLE_ORG_SPEC,
-    build_mock_org,
 )
 
 
@@ -39,7 +38,7 @@ def test_jsonfmt():
     (['--role', ORG_ACCESS_ROLE, '--debug', '--debug', 'list_accounts_by_name']),
 ])
 def test_orgquery_success(options_list):
-    org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
+    MockOrganization().simple()
     runner = CliRunner()
     result = runner.invoke(
         orgquery.main,
@@ -59,7 +58,7 @@ def test_orgquery_success(options_list):
     (['--role', ORG_ACCESS_ROLE, 'list_accounts_in_ou']),
 ])
 def test_orgquery_failure(options_list):
-    org_id, root_id = build_mock_org(SIMPLE_ORG_SPEC)
+    MockOrganization().simple()
     runner = CliRunner()
     result = runner.invoke(
         orgquery.main,

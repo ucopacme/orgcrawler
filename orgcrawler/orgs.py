@@ -1,5 +1,6 @@
 import os
 import sys
+import shutil
 import inspect
 import pickle
 import json
@@ -142,6 +143,13 @@ class Org(object):
             self.policies = []
             self._load_policies()
             self._save_cached_org_to_file()
+
+    def clear_cache(self):
+        '''
+        Delete any pre-existing org cache files
+        '''
+        if os.path.isdir(self._cache_dir):
+            shutil.rmtree(self._cache_dir)
 
     def _load_client(self):
         message = {

@@ -28,12 +28,19 @@ See full documentation at https://orgcrawler.readthedocs.io/en/latest/
 Currently orgcrawler is tested in python 3.6, 3.7.
 
 
+The OrgCrawler package no longer contains payload functions.  These are now maintained
+in package ``orgcrawler-payload``.
+
+
 Installation
 ------------
 
 ::
 
   pip install orgcrawler
+  pip install orgcrawler-payload
+
+
 
 
 The Org object
