@@ -83,7 +83,7 @@ Get Started
 
    .. code-block:: shell
 
-      $ flake8
+      $ flake8 orgcrawler
 
    Run unit tests or coverage in your current environment - (handy for quickly running unit tests):
 

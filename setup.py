@@ -4,7 +4,7 @@
 from setuptools import setup, find_namespace_packages
 
 
-VERSION = '1.0.0a4'
+VERSION = '1.0.0a5'
 LONGDESC = '''
 Getting Started with OrgCrawler
 ===============================
