@@ -49,6 +49,7 @@ After merging a pull request on Github:
 
 #. Build a distributable package with the ``setup.py`` script::
 
+     > rm -rf dist/*
      > python setup.py sdist bdist_wheel
      > ls -1 dist/
      orgcrawler-1.0.0a5-py3-none-any.whl

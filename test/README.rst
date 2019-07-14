@@ -13,3 +13,7 @@ Testing org setup for TooManyRequestsException errors:
   done
 
 
+Test individual module::
+
+  pytest --disable-warnings --no-cov --verbose test_blee.py
+

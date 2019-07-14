@@ -236,8 +236,12 @@ def test_execute():
     assert crawler.get_execution('get_mock_account_alias') == crawler.executions[1]
     assert crawler.get_execution('create_mock_bucket') == crawler.executions[2]
 
+    # test error handling
     with pytest.raises(SystemExit):
-        bad_execution = crawler.execute(bad_payload_func)
+        crawler.execute(bad_payload_func)
+    bad_execution = crawler.get_execution('bad_payload_func')
+    assert isinstance(bad_execution.errmsg, str) 
+    assert bad_execution.errmsg.split()[2] == str(len(bad_execution.responses))
 
 
 args = ('cat', 'dog', 'rat')
