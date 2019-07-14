@@ -126,7 +126,7 @@ Examples:
         formatter = utils.yamlfmt
 
     if debug == 0:
-        log_level = 'error'
+        log_level = 'warning'
     elif debug == 1:
         log_level = 'info'
     elif debug >= 2:

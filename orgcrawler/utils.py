@@ -7,6 +7,7 @@ except ImportError:     # pragma: no cover
 import json
 import yaml
 import inspect
+import time
 from datetime import datetime
 from functools import singledispatch
 
@@ -16,14 +17,15 @@ from botocore.exceptions import ClientError
 from orgcrawler.logger import Logger
 
 
-DEFAULT_LOGLEVEL = 'error'
+DEFAULT_LOGLEVEL = 'warning'
+DEFAULT_THREAD_COUNT = 6
 
 
 def get_logger(log_level=DEFAULT_LOGLEVEL):
     my_logger = Logger(loglevel=log_level)
     message = {
         'FILE': __file__.split('/')[-1],
-        'METHOD': inspect.stack()[0][3],
+        'FUCNTION': inspect.stack()[0][3],
     }
     my_logger.info(message)
     return my_logger
@@ -107,8 +109,17 @@ def get_master_account_id(role_name=None):
         sys.exit(e)
 
 
-def queue_threads(sequence, func, func_args=(), thread_count=20, logger=get_logger()):
-    """generalized abstraction for running queued tasks in a thread pool"""
+def queue_threads(sequence, func, func_args=(), thread_count=DEFAULT_THREAD_COUNT, logger=get_logger()):
+    """
+    Generalized abstraction for running queued tasks in a thread pool
+
+    Args:
+        sequence (list): list of items or data structures to iterate over
+        func (Function): python code to run within the threads
+        func_args (tuple): optional arguments for 'func'
+        thread_count (int): number of threads to create [Default: DEFAULT_THREAD_COUNT]
+        logger (orgcrawler.logger.Logger): a logger instance [Default: get_logger()]
+    """
     message = {
         'FILE': __file__.split('/')[-1],
         'METHOD': inspect.stack()[0][3],
@@ -144,3 +155,41 @@ def regions_for_service(service_name):
 
 def all_regions():
     return regions_for_service('ec2')
+
+
+def handle_nexttoken_and_retries(obj, collector_key, function, kwargs=dict()):
+    message = {
+        'FILE': __file__.split('/')[-1],
+        'FUNCTION': inspect.stack()[0][3],
+        'OBJECT': obj.__class__,
+        'object_id': obj.id,
+    }
+    obj.logger.info(message)
+    max_retry = 4
+    retry_count = 0
+    response = None
+    next_token = None
+    collector = []
+    while response is None or next_token is not None:
+        try:
+            if next_token is None:
+                response = function(**kwargs)
+            else:
+                response = function(NextToken=next_token, **kwargs)
+            next_token = response.get('NextToken')
+            collector += response[collector_key]
+        except ClientError as e:
+            if e.response['Error']['Code'] == 'TooManyRequestsException':
+                if retry_count < max_retry:
+                    retry_count += 1
+                    message['passed_function'] = function
+                    message['error'] = 'TooManyRequestsException'
+                    message['retry_count'] = retry_count
+                    obj.logger.warning(message)
+                    time.sleep(1)
+                    continue
+                else:
+                    raise e
+            else:
+                raise e
+    return collector

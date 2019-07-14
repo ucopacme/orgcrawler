@@ -40,7 +40,7 @@ def test_get_org_client():
 def test_load_client():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org._load_client()
-    assert str(type(org._client)).find('botocore.client.Organizations') > 0
+    assert str(type(org.client)).find('botocore.client.Organizations') > 0
 
 @mock_sts
 @mock_organizations
@@ -338,7 +338,7 @@ def test_get_account_id_by_name():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org.load()
     account_id = org.get_account_id_by_name('account01')
-    accounts_by_boto_client = org._client.list_accounts()['Accounts']
+    accounts_by_boto_client = org.client.list_accounts()['Accounts']
     assert account_id == next((
         a['Id'] for a in accounts_by_boto_client if a['Name'] == 'account01'
     ), None)
@@ -353,7 +353,7 @@ def test_get_account_name_by_id():
     org.load()
     account_id = org.get_account_id_by_name('account01')
     account_name = org.get_account_name_by_id(account_id)
-    accounts_by_boto_client = org._client.list_accounts()['Accounts']
+    accounts_by_boto_client = org.client.list_accounts()['Accounts']
     assert account_name == next((
         a['Name'] for a in accounts_by_boto_client if a['Id'] == account_id
     ), None)
@@ -395,7 +395,7 @@ def test_list_accounts_in_ou():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org.load()
     response = org.list_accounts_in_ou(org.root_id)
-    accounts_by_boto_client = org._client.list_accounts_for_parent(
+    accounts_by_boto_client = org.client.list_accounts_for_parent(
         ParentId=org.root_id
     )['Accounts']
     for account in response:
@@ -404,7 +404,7 @@ def test_list_accounts_in_ou():
             if a['Name'] == account.name
         ), None)
     response = org.list_accounts_in_ou('ou02')
-    accounts_by_boto_client = org._client.list_accounts_for_parent(
+    accounts_by_boto_client = org.client.list_accounts_for_parent(
         ParentId=org.get_org_unit_id('ou02')
     )['Accounts']
     for account in response:
@@ -422,7 +422,7 @@ def test_list_org_units_in_ou():
     org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
     org.load()
     response = org.list_org_units_in_ou(org.root_id)
-    ou_by_boto_client = org._client.list_organizational_units_for_parent(
+    ou_by_boto_client = org.client.list_organizational_units_for_parent(
         ParentId=org.root_id
     )['OrganizationalUnits']
     for org_unit in response:
@@ -431,7 +431,7 @@ def test_list_org_units_in_ou():
             if ou['Name'] == org_unit.name
         ), None)
     response = org.list_org_units_in_ou('ou02')
-    ou_by_boto_client = org._client.list_organizational_units_for_parent(
+    ou_by_boto_client = org.client.list_organizational_units_for_parent(
         ParentId=org.get_org_unit_id('ou02')
     )['OrganizationalUnits']
     for org_unit in response:
@@ -577,7 +577,7 @@ def test_get_policy_id():
 #    org.load()
 #    policy_id = org.get_policy_id('policy01')
 #    print(policy_id)
-#    response = org._client.describe_policy(PolicyId=policy_id)
+#    response = org.client.describe_policy(PolicyId=policy_id)
 #    print(response)
 #    #policy_doc = org.get_policy_document('policy01')
 #    #print(policy_doc)

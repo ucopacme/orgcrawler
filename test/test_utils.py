@@ -9,7 +9,7 @@ import boto3
 from botocore.exceptions import ClientError
 from moto import mock_sts, mock_organizations
 
-from orgcrawler import utils, orgs
+from orgcrawler import utils, orgs, logger
 from orgcrawler.mock.org import (
     SIMPLE_ORG_SPEC,
     MASTER_ACCOUNT_ID,
@@ -102,3 +102,60 @@ def test_regions_for_service():
         regions = utils.regions_for_service('blee')
     all_regions = utils.all_regions()
     assert all_regions == utils.regions_for_service('ec2')
+
+
+def test_handle_nexttoken_and_retries():
+
+    def mock_function_set_next_token(**kwargs):
+        if not kwargs.get('NextToken'):
+            return {'mock-key': ['1st-pass'], 'NextToken': 'mock-token-str'}
+        else:
+            return {'mock-key': ['2nd-pass']}
+
+    def mock_function_raise_client_error(error_code):
+        raise ClientError(
+            {'Error': {
+                'Code': error_code},
+            },
+            'mock_function',
+        )
+
+    def mock_function_raise_value_error():
+        raise ValueError('this is a value error')
+
+    org = orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE)
+    collector = utils.handle_nexttoken_and_retries(
+        obj=org,
+        collector_key='mock-key',
+        function=mock_function_set_next_token,
+        kwargs=dict(),
+    )
+    assert collector == ['1st-pass', '2nd-pass']
+
+    exception_name = 'TooManyRequestsException'
+    with pytest.raises(ClientError) as e:
+        collector = utils.handle_nexttoken_and_retries(
+            obj=org,
+            collector_key='mock-key',
+            function=mock_function_raise_client_error,
+            kwargs=dict(error_code=exception_name),
+        )
+    assert e.value.response['Error']['Code'] == exception_name
+
+    exception_name = 'SomeOtherException'
+    with pytest.raises(ClientError) as e:
+        collector = utils.handle_nexttoken_and_retries(
+            obj=org,
+            collector_key='mock-key',
+            function=mock_function_raise_client_error,
+            kwargs=dict(error_code=exception_name),
+        )
+    assert e.value.response['Error']['Code'] == exception_name
+
+    with pytest.raises(ValueError) as e:
+        collector = utils.handle_nexttoken_and_retries(
+            obj=org,
+            collector_key='mock-key',
+            function=mock_function_raise_value_error,
+            kwargs=dict(),
+        )

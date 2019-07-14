@@ -24,7 +24,7 @@ class Logger(object):
         mainlogger = logging.getLogger()
         mainlogger.setLevel(loglevel)
 
-        logfmt = '{"time_stamp": "%(asctime)s", "log_level": "%(levelname)s", "log_message": %(message)s}\n'
+        logfmt = '{"time_stamp": "%(asctime)s", "log_level": "%(levelname)s", "log_message": %(message)s}'
         if len(mainlogger.handlers) == 0:  # pragma: no cover
             mainlogger.addHandler(logging.StreamHandler())
         mainlogger.handlers[0].setFormatter(logging.Formatter(logfmt))

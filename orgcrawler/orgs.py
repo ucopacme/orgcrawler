@@ -7,6 +7,7 @@ import json
 from datetime import datetime, timedelta
 
 import boto3
+import botocore
 from botocore.exceptions import ClientError
 
 from orgcrawler import utils
@@ -69,7 +70,7 @@ class Org(object):
         self.accounts = []
         self.org_units = []
         self.policies = []
-        self._client = None
+        self.client = None
         self._cache_file_max_age = cache_file_max_age
         self._cache_dir = os.path.expanduser(cache_dir)
         if cache_file is None:
@@ -104,7 +105,7 @@ class Org(object):
         org_dump = dict()
         org_dump.update(vars(self).items())
         org_dump.pop('logger')
-        org_dump.pop('_client')
+        org_dump.pop('client')
         org_dump.pop('_cache_dir')
         org_dump.pop('_cache_file')
         org_dump.pop('_cache_file_max_age')
@@ -158,7 +159,7 @@ class Org(object):
             'METHOD': inspect.stack()[0][3],
         }
         self.logger.info(message)
-        self._client = self._get_org_client()
+        self.client = self._get_org_client()
 
     def _get_org_client(self):
         """ Returns a boto3 client for Organizations object """
@@ -180,7 +181,12 @@ class Org(object):
                 e.response['Error']['Code'],
             )
             sys.exit(errmsg)
-        return boto3.client('organizations', **credentials)
+        client_config = botocore.config.Config(
+            # see https://github.com/boto/botocore/issues/619
+            # the default is 10
+            max_pool_connections=10
+        )
+        return boto3.client('organizations', config=client_config, **credentials)
 
     def _get_cached_org_from_file(self):
         message = {
@@ -225,9 +231,9 @@ class Org(object):
             'METHOD': inspect.stack()[0][3],
         }
         self.logger.info(message)
-        response = self._client.describe_organization()
+        response = self.client.describe_organization()
         self.id = response['Organization']['Id']
-        self.root_id = self._client.list_roots()['Roots'][0]['Id']
+        self.root_id = self.client.list_roots()['Roots'][0]['Id']
 
     def _load_accounts(self):
         message = {
@@ -236,32 +242,33 @@ class Org(object):
             'METHOD': inspect.stack()[0][3],
         }
         self.logger.info(message)
-        response = self._client.list_accounts()
-        accounts = response['Accounts']
-        while 'NextToken' in response and response['NextToken']:    # pragma: no cover
-            try:
-                response = self._client.list_accounts(NextToken=response['NextToken'])
-                accounts += response['Accounts']
-            except ClientError as e:
-                if e.response['Error']['Code'] == 'TooManyRequestsException':
-                    continue
-        # skip accounts with no 'Name' key as these are not fully created yet.
+        accounts = utils.handle_nexttoken_and_retries(
+            obj=self,
+            collector_key='Accounts',
+            function=self.client.list_accounts,
+        )
+        # skip accounts with no 'Name' key, as these are not fully created yet.
         accounts = [account for account in accounts if 'Name' in account]
 
         def make_org_account_object(account, org):
+            message = {
+                'FILE': __file__.split('/')[-1],
+                'CLASS': self.__class__.__name__,
+                'METHOD': inspect.stack()[0][3],
+                'account_id': account['Id'],
+                'account_name': account['Name'],
+            }
+            self.logger.info(message)
             try:
-                response = org._client.list_parents(ChildId=account['Id'])
-                parent_id = response['Parents'][0]['Id']
                 org_account = OrgAccount(
                     org,
                     name=account['Name'],
                     id=account['Id'],
                     email=account['Email'],
-                    parent_id=parent_id,
                 )
-                org_account.load_attached_policy_ids(org._client)
+                org_account.get_parent_id()
+                org_account.load_attached_policy_ids()
                 org.accounts.append(org_account)
-
             except Exception:   # pragma: no cover
                 org._exc_info = sys.exc_info()
 
@@ -269,7 +276,6 @@ class Org(object):
             accounts,
             make_org_account_object,
             func_args=(self,),
-            thread_count=len(accounts),
             logger=self.logger,
         )
         if self._exc_info:   # pragma: no cover
@@ -291,14 +297,12 @@ class Org(object):
             'METHOD': inspect.stack()[0][3],
         }
         self.logger.info(message)
-        response = self._client.list_organizational_units_for_parent(ParentId=parent_id)
-        org_units = response['OrganizationalUnits']
-        while 'NextToken' in response and response['NextToken']:    # pragma: no cover
-            response = self._client.list_organizational_units_for_parent(
-                ParentId=parent_id,
-                NextToken=response['NextToken']
-            )
-            org_units += response['OrganizationalUnits']
+        org_units = utils.handle_nexttoken_and_retries(
+            obj=self,
+            collector_key='OrganizationalUnits',
+            function=self.client.list_organizational_units_for_parent,
+            kwargs=dict(ParentId=parent_id),
+        )
         for ou in org_units:
             org_unit = OrganizationalUnit(
                 self,
@@ -306,7 +310,7 @@ class Org(object):
                 id=ou['Id'],
                 parent_id=parent_id,
             )
-            org_unit.load_attached_policy_ids(self._client)
+            org_unit.load_attached_policy_ids()
             self.org_units.append(org_unit)
             self._recurse_organization(ou['Id'])
 
@@ -317,14 +321,12 @@ class Org(object):
             'METHOD': inspect.stack()[0][3],
         }
         self.logger.info(message)
-        response = self._client.list_policies(Filter='SERVICE_CONTROL_POLICY')
-        policies = response['Policies']
-        while 'NextToken' in response and response['NextToken']:    # pragma: no cover
-            response = self._client.list_policies(
-                Filter='SERVICE_CONTROL_POLICY',
-                NextToken=response['NextToken'],
-            )
-            policies += response['Policies']
+        policies = utils.handle_nexttoken_and_retries(
+            obj=self,
+            collector_key='Policies',
+            function=self.client.list_policies,
+            kwargs=dict(Filter='SERVICE_CONTROL_POLICY'),
+        )
 
         def make_org_policy_object(policy, org):
             message = {
@@ -340,7 +342,7 @@ class Org(object):
                     name=policy['Name'],
                     id=policy['Id'],
                 )
-                org_policy.load_targets(org._client)
+                org_policy.load_targets()
                 org.policies.append(org_policy)
             except Exception:   # pragma: no cover
                 org._exc_info = sys.exc_info()
@@ -349,7 +351,6 @@ class Org(object):
             policies,
             make_org_policy_object,
             func_args=(self,),
-            thread_count=len(policies),
             logger=self.logger,
         )
         if self._exc_info:   # pragma: no cover
@@ -593,8 +594,8 @@ class Org(object):
         """
         policy_id = self.get_policy_id(identifier)
         #if policy_id is not None:
-        #    #return self._client.describe_policy(PolicyId=policy_id)['Policy']['Content']
-        #    return self._client.describe_policy(PolicyId=policy_id)
+        #    #return self.client.describe_policy(PolicyId=policy_id)['Policy']['Content']
+        #    return self.client.describe_policy(PolicyId=policy_id)
         #return None
     '''
 
@@ -657,6 +658,7 @@ class OrgObject(object):
     def __init__(self, organization, **kwargs):
         self.organization_id = organization.id
         self.master_account_id = organization.master_account_id
+        self.client = organization.client
         self.logger = organization.logger
         self.name = kwargs['name']
         self.id = kwargs.get('id')
@@ -670,27 +672,49 @@ class OrgObject(object):
         org_object_dump = dict()
         org_object_dump.update(vars(self).items())
         org_object_dump.pop('logger')
+        org_object_dump.pop('client')
         return org_object_dump
 
-    def load_attached_policy_ids(self, client):
+    def get_parent_id(self):
+        '''
+        Set the parent id in OrgObject.  Thread freindly.
+        '''
         message = {
             'FILE': __file__.split('/')[-1],
             'CLASS': self.__class__.__name__,
             'METHOD': inspect.stack()[0][3],
+            'object_id': self.id,
+            'object_name': self.name,
         }
         self.logger.info(message)
-        response = client.list_policies_for_target(
-            TargetId=self.id,
-            Filter='SERVICE_CONTROL_POLICY',
+        parents = utils.handle_nexttoken_and_retries(
+            obj=self,
+            collector_key='Parents',
+            function=self.client.list_parents,
+            kwargs=dict(
+                ChildId=self.id,
+            )
         )
-        policies = response['Policies']
-        while 'NextToken' in response and response['NextToken']:  # pragma: no cover
-            client.list_policies_for_target(
+        self.parent_id = parents[0]['Id']
+
+    def load_attached_policy_ids(self):
+        message = {
+            'FILE': __file__.split('/')[-1],
+            'CLASS': self.__class__.__name__,
+            'METHOD': inspect.stack()[0][3],
+            'object_id': self.id,
+            'object_name': self.name,
+        }
+        self.logger.info(message)
+        policies = utils.handle_nexttoken_and_retries(
+            obj=self,
+            collector_key='Policies',
+            function=self.client.list_policies_for_target,
+            kwargs=dict(
                 TargetId=self.id,
                 Filter='SERVICE_CONTROL_POLICY',
-                NextToken=response['NextToken'],
             )
-            policies += response['Policies']
+        )
         self.attached_policy_ids = [p['Id'] for p in policies]
 
 
@@ -723,7 +747,7 @@ class OrgPolicy(OrgObject):
         super(OrgPolicy, self).__init__(*args, **kwargs)
         self.targets = kwargs.get('targets', [])
 
-    def load_targets(self, client):
+    def load_targets(self):
         message = {
             'FILE': __file__.split('/')[-1],
             'CLASS': self.__class__.__name__,
@@ -731,12 +755,11 @@ class OrgPolicy(OrgObject):
             'policy': self.name,
         }
         self.logger.info(message)
-        response = client.list_targets_for_policy(PolicyId=self.id)
-        targets = response['Targets']
-        while 'NextToken' in response and response['NextToken']:  # pragma: no cover
-            response = client.list_targets_for_policy(
+        self.targets = utils.handle_nexttoken_and_retries(
+            obj=self,
+            collector_key='Targets',
+            function=self.client.list_targets_for_policy,
+            kwargs=dict(
                 PolicyId=self.id,
-                NextToken=response['NextToken'],
             )
-            targets += response['Targets']
-        self.targets = targets
+        )
