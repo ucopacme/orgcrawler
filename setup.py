@@ -4,7 +4,7 @@
 from setuptools import setup, find_namespace_packages
 
 
-VERSION = '1.0.0a6'
+VERSION = '1.0.0b1'
 LONGDESC = '''
 Getting Started with OrgCrawler
 ===============================
@@ -52,7 +52,7 @@ setup(
     author_email='agould@ucop.edu',
     license='GPLv3',
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'Intended Audience :: System Administrators',
         'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
