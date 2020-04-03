@@ -21,6 +21,7 @@ def test_jsonfmt():
         name='account01',
         id='112233445566',
         email='account01@example.org',
+        status='ACTIVE',
     )
     output = orgquery.jsonfmt(account)
     assert isinstance(output, str)

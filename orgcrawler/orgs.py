@@ -265,6 +265,7 @@ class Org(object):
                     name=account['Name'],
                     id=account['Id'],
                     email=account['Email'],
+                    status=account['Status'],
                 )
                 org_account.get_parent_id()
                 org_account.load_attached_policy_ids()
@@ -730,10 +731,12 @@ class OrgAccount(OrgObject):
         super(OrgAccount, self).__init__(*args, **kwargs)
         self.email = kwargs['email']
         self.aliases = kwargs.get('aliases', [])
+        self.status = kwargs['status']
         self.credentials = {}
 
     def load_credentials(self, access_role):
-        self.credentials = utils.assume_role_in_account(self.id, access_role)
+        if self.status == 'ACTIVE':
+            self.credentials = utils.assume_role_in_account(self.id, access_role)
 
     def dump(self):
         account_dump = super(OrgAccount, self).dump()

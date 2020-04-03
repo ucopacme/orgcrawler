@@ -41,7 +41,10 @@ def get_mock_account_alias(region, account):
 
 def create_mock_bucket(region, account, bucket_prefix):
     client = boto3.client('s3', region_name=region, **account.credentials)
-    response = client.create_bucket(Bucket='-'.join([bucket_prefix, account.id]))
+    response = client.create_bucket(
+        Bucket='-'.join([bucket_prefix, account.id, region]),
+        CreateBucketConfiguration={'LocationConstraint': region},
+    )
     return response
 
 

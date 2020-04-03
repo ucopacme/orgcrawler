@@ -97,24 +97,29 @@ def test_crawler_init():
         accounts=org.get_account('account02'),
         regions='GLOBAL',
     )
+    assert len(crawler.accounts) == 1
     assert isinstance(crawler.accounts[0], orgs.OrgAccount)
     assert crawler.accounts[0].name == 'account02'
     assert crawler.regions == [crawlers.DEFAULT_REGION]
 
     crawler = crawlers.Crawler(org, 
-        accounts=['account01', org.get_account_id_by_name('account02'), org.get_account('account03')], 
+        accounts=['account01', org.get_account_id_by_name('account02'),
+                org.get_account('account03')], 
         regions=['us-west-2', 'us-east-1'],
     )
     for account in crawler.accounts:
         assert isinstance(account, orgs.OrgAccount)
-    assert len(crawler.regions) == 2
+    assert sorted([a.name for a in crawler.accounts]) == [
+            'account01', 'account02', 'account03']
+    assert sorted(crawler.regions) == ['us-east-1', 'us-west-2']
 
     crawler = crawlers.Crawler(org,
         accounts=org.list_accounts_in_ou('ou01'),
         regions=utils.regions_for_service('iam'),
         access_role='OrgCrawlerAdmin',
     )
-    assert len(crawler.accounts) == 3
+    assert sorted([a.name for a in crawler.accounts]) == [
+            'account01', 'account02', 'account03', 'master']
     for account in crawler.accounts:
         assert isinstance(account, orgs.OrgAccount)
     assert crawler.regions == [crawlers.DEFAULT_REGION]
@@ -130,6 +135,18 @@ def test_crawler_init():
         crawler = crawlers.Crawler(org, regions=['us-west-1', 'bogus-1', 'bogus-2'])
     assert str(e.value) == 'Invalid regions: bogus-1, bogus-2'
 
+    # test handling of 'SUSPENDED' account
+    account = orgs.OrgAccount(
+        orgs.Org(MASTER_ACCOUNT_ID, ORG_ACCESS_ROLE),
+        name='inactive-account',
+        id='992233445566',
+        email='inactive-account@example.org',
+        status='SUSPENDED',
+    )
+    org.accounts.append(account)
+    crawler = crawlers.Crawler(org)
+    assert 'inactive-account' in [a.name for a in org.accounts]
+    assert 'inactive-account' not in [a.name for a in crawler.accounts]
 
 @mock_sts
 @mock_organizations
@@ -225,7 +242,7 @@ def test_execute():
         assert isinstance(response.payload_output, list)
         assert response.payload_output[0].startswith('alias-account')
 
-    crawler.update_regions(ALL_REGIONS)
+    crawler.update_regions(['us-west-2', 'us-east-2', 'us-west-1', 'eu-west-1'])
     execution3 = crawler.execute(create_mock_bucket, 'mockbucket')
     assert len(crawler.executions) == 3
     assert len(execution3.responses) == len(crawler.accounts) * len(crawler.regions)

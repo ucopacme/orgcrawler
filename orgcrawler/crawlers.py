@@ -35,6 +35,11 @@ class Crawler(object):
             raise ValueError('"{}" is not a valid organization account'.format(account))
         return True
 
+    def is_active_account(self, account):
+        if account.status != 'ACTIVE':
+            return False
+        return True
+
     def validate_accounts(self):
         if self.accounts != self.org.accounts:
             if not isinstance(self.accounts, list):
@@ -43,6 +48,7 @@ class Crawler(object):
                 self.org.get_account(a) for a in self.accounts
                 if self.is_valid_account(a)
             ]
+        self.accounts = [a for a in self.accounts if self.is_active_account(a)]
 
     def validate_regions(self):
         if self.regions == 'GLOBAL':

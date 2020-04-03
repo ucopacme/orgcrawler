@@ -8,7 +8,7 @@ from moto import (
 
 import orgcrawler
 from orgcrawler import crawlers
-from orgcrawler.orgs import Org
+from orgcrawler.orgs import Org, OrgAccount
 from orgcrawler.utils import yamlfmt
 from orgcrawler.cli.utils import (
     get_payload_function_from_string,
@@ -44,9 +44,8 @@ def test_setup_crawler():
     MockOrganization().simple()
     crawler = setup_crawler(ORG_ACCESS_ROLE)
     assert isinstance(crawler, crawlers.Crawler)
-    assert len(crawler.org.accounts) == 3
-    assert len(crawler.org.org_units) == 6
     for account in crawler.accounts:
+        assert isinstance(account, OrgAccount)
         assert 'aws_access_key_id' in account.credentials
         assert 'aws_secret_access_key' in account.credentials
         assert 'aws_session_token' in account.credentials

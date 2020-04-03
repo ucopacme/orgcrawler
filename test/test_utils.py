@@ -28,6 +28,7 @@ def test_jsonfmt():
         name='account01',
         id='112233445566',
         email='account01@example.org',
+        status='ACTIVE',
     )
     output = utils.jsonfmt(account, orgs.OrgObject.dump)
     assert isinstance(output, str)
@@ -44,6 +45,7 @@ def test_yamlfmt():
         name='account01',
         id='112233445566',
         email='account01@example.org',
+        status='ACTIVE',
     )
     output = utils.yamlfmt(account)
     assert isinstance(output, str)

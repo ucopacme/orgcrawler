@@ -69,7 +69,7 @@ def test_account_gen():
     mock_org._account_gen(account, mock_org.root_id)
     assert len(mock_org.policy_list) == 2
     response = mock_org.client.list_accounts_for_parent(ParentId=mock_org.root_id)
-    assert response['Accounts'][0]['Name'] == account['name']
+    assert [a for a in response['Accounts'] if a['Name'] == account['name']]
 
 @mock_sts
 @mock_organizations
@@ -77,10 +77,10 @@ def test_simple_build():
     mock_org = MockOrganization()
     mock_org.simple()
     assert mock_org.spec == yaml.safe_load(SIMPLE_ORG_SPEC)
-    assert len(mock_org.client.list_accounts()['Accounts']) == 3
+    assert len(mock_org.client.list_accounts()['Accounts']) == 4
     assert len(mock_org.client.list_policies(
         Filter='SERVICE_CONTROL_POLICY'
-    )['Policies']) == 3
+    )['Policies']) == 4
     assert len(mock_org.client.list_organizational_units_for_parent(
         ParentId=mock_org.root_id
     )['OrganizationalUnits']) == 3
@@ -91,10 +91,10 @@ def test_complex_build():
     mock_org = MockOrganization()
     mock_org.complex()
     assert mock_org.spec == yaml.safe_load(COMPLEX_ORG_SPEC)
-    assert len(mock_org.client.list_accounts()['Accounts']) == 13
+    assert len(mock_org.client.list_accounts()['Accounts']) == 14
     assert len(mock_org.client.list_policies(
         Filter='SERVICE_CONTROL_POLICY'
-    )['Policies']) == 6
+    )['Policies']) == 7
     assert len(mock_org.client.list_organizational_units_for_parent(
         ParentId=mock_org.root_id
     )['OrganizationalUnits']) == 2
